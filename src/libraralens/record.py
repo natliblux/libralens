@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
 import re
-from constants import RELEVANT_FIELDS
+from libraralens.constants import RELEVANT_FIELDS
+from .funcs import remove_namespaces
 
 class Record:
 
@@ -10,12 +11,12 @@ class Record:
             raise ValueError("format must be either 'text' or 'xml'")
 
         self.data = data
-        self.format = input_format
+        self.input_format = input_format
         self.fields = []
 
-        if format == "xml":
+        if self.input_format == "xml":
             self.parse_xml()
-        elif format == "text":
+        elif self.input_format == "text":
             self.parse_text()
 
     def parse_text(self):
@@ -81,10 +82,7 @@ class Record:
     def parse_xml(self):
 
         root = ET.fromstring(self.data)
-
-        for elem in root.iter():
-            if "}" in elem.tag:
-                elem.tag = elem.tag.split("}", 1)[1]
+        root = remove_namespaces(root)
 
         for field in root:
 
