@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "LibraLens"
+version = "1.0"
+description = "Python library providing tools for the evaluation of MARC 21 records."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+libralens = "libralens.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
