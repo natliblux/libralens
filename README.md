@@ -131,7 +131,7 @@ For example:
 
 ```bash
 export LIBRALENS_LLM_URL="https://api.openai.com/v1"
-export LIBRALENS_LLM_MODEL="gpt-5.6-sol"
+export LIBRALENS_LLM_MODEL="gpt-5"
 export LIBRALENS_LLM_KEY="..."
 ```
 
