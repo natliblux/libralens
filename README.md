@@ -119,6 +119,24 @@ text/
 
 The numbered text files correspond to the records by their order within the `.xml` file, starting at `0`. Leading zeros are optional and ignored when determining the record. The number of text files must match the number of records.
 
+## LLM Configuration
+
+Some evaluation methods require access to an LLM. LibraLens supports LLMs exposed through an OpenAI-compatible Chat Completions API. The connection can be configured through the following environment variables:
+
+- `LIBRALENS_LLM_URL` - required
+- `LIBRALENS_LLM_MODEL` - required
+- `LIBRALENS_LLM_KEY` - optional, depending on the endpoint
+
+For example:
+
+```bash
+export LIBRALENS_LLM_URL="https://api.openai.com/v1/v1"
+export LIBRALENS_LLM_MODEL="gpt-5"
+export LIBRALENS_LLM_KEY="..."
+```
+
+The API key can be omitted for endpoints that do not require authentication, such as some locally hosted models.
+
 ## Supported MARC Fields
 
 LibraLens currently supports the following MARC 21 fields and subfields:

@@ -11,3 +11,7 @@ RELEVANT_FIELDS = {
     "700": ["a", "b", "d", "0", "e", "4"],
     "710": ["a", "b", "d", "0", "e", "4"],
 }
+
+LLM_URL_ENV = "LIBRALENS_LLM_URL"
+LLM_MODEL_ENV = "LIBRALENS_LLM_MODEL"
+LLM_KEY_ENV = "LIBRALENS_LLM_KEY"
