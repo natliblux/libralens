@@ -130,7 +130,7 @@ Some evaluation methods require access to an LLM. LibraLens supports LLMs expose
 For example:
 
 ```bash
-export LIBRALENS_LLM_URL="https://api.openai.com/v1/v1"
+export LIBRALENS_LLM_URL="https://api.openai.com/v1"
 export LIBRALENS_LLM_MODEL="gpt-5"
 export LIBRALENS_LLM_KEY="..."
 ```
