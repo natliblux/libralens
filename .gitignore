@@ -1,6 +1,5 @@
 *.pyc
 __pycache__/
 .venv/
-sample-data/
 *.egg-info/
 test_library.py
