@@ -3,12 +3,12 @@
   <img src="assets/logo.png" alt="LibraLens logo" width="400">
 </p>
 
-LibraLens is a Python library providing tools for the evaluation of MARC 21 records. It supports records in text and xml format. Records can be evaluated independently or compared against corresponding **gold** and **platinum** standards:
+LibraLens is a Python library providing methods for the evaluation of MARC 21 records. It supports records in xml and text format. Records can be evaluated independently or compared against corresponding **gold** and **platinum** standards:
 
 * **Gold** represents a record based on experienced human-level cataloging.
 * **Platinum** represents a maximized record version based on unlimited resources and exceeding general cataloging expectations.
 
-LibraLens is designed as a toolbox, allowing different evaluation tools and MARC fields to be selected depending on the analysis to perform.
+LibraLens is designed as a toolbox, allowing different evaluation methods and MARC fields to be selected depending on the analysis to perform.
 
 ## Installation
 
@@ -30,55 +30,94 @@ The `LibraLens` class provides the main entry point to the library:
 from libralens import LibraLens
 
 ll = LibraLens(
-    eval="records/eval/",
-    gold="records/gold/",
-    platinum="records/platinum/",
-    tools=["tool1", "tool2"],
+    eval="records/",
+    methods=["method1", "method2"],
     fields=["100", "245", "264"],
+    gold="gold/",
+    platinum="platinum/",
+    text="text/"
 )
 
 results = ll.run()
 ```
 
-The parameters `gold`, `platinum` and `fields` are optional. If the latter is ommited, all supported fields are considered by default.
+The parameters `fields`, `gold`, `platinum` and `text` are optional. If `fields` is ommited, all supported fields are considered by default.
+
 ### Command Line Interface
 
-Evaluate all records within an .xml file or a single record within a .txt file:
+Use method1 to evaluate a .txt file (single record only) or an .xml file (single or multiple records):
 
 ```bash
-libralens --eval record.txt --tools tool1
+libralens --eval record.txt --methods method1
 ```
 
-Evaluate record(s) using multiple tools:
+Evaluate record(s) using multiple methods:
 
 ```bash
-libralens --eval record.xml --tools tool1 tool2
+libralens --eval record.xml --methods method1 method2
 
 ```
 
-Evaluate all records within a directory:
+Evaluate all records (within .xml/.txt files) within a directory:
 
 ```bash
-libralens --eval records/ --tools tool1
+libralens --eval records/ --methods method1
 ```
 
 Limit the evaluation to specific MARC fields:
 
 ```bash
-libralens --eval record.xml --tools tool1 --fields 100 245 264
+libralens --eval record.xml --methods method1 --fields 100 110 700 710
 ```
 
 Provide corresponding gold standards and platinum standards:
 
 ```bash
-libralens --eval records/ --gold gold/ --platinum platinum/ --tools tool1
+libralens --eval records/ --methods method1 --gold gold/ --platinum platinum/
 ```
 
-The short forms `-e`, `-g`, `-p`, `-t` and `-f` can be used instead of their corresponding long options. Check `--help` for more info.
+Certain methods require the corresponding document plain text:
 
-## Record Matching
+```bash
 
-When directories are used, gold and platinum files are matched with the eval files by filename. When matched .xml files contain multiple records, records are paired by their order within the file. The number of records must therefore match across the corresponding eval, gold and platinum files. Gold and platinum standards are optional and can be provided independently.
+libralens --eval records/ --methods method1 --text text/
+
+```
+
+The short forms `-e`, `-m`, `-f`, `-g`, `-p` and `-t` can be used instead of their corresponding long options. Check `--help` for more info.
+
+## Document Matching
+
+All data belonging to the same document is matched through its base filename. This includes the eval records, the corresponding gold and platinum standards, and plain text. For example, the following files are considered to belong to the same document:
+
+```text
+eval/
+    record.xml
+gold/
+    record.xml
+platinum/
+    record.xml
+text/
+    record.txt
+```
+
+Gold and platinum files must have the same filename as the corresponding eval file. Plain text files use the same base filename but always use the `.txt` extension. When matched `.xml` files contain multiple records, eval, gold and platinum records are paired by their order within the file. The number of records must therefore match across the corresponding files. For a multi-record `.xml` file, the corresponding plain text is provided through a directory with the same base filename:
+
+```text
+eval/
+    records.xml
+gold/
+    records.xml
+platinum/
+    records.xml
+text/
+    records/
+        00.txt
+        01.txt
+        02.txt
+```
+
+The numbered text files correspond to the records by their order within the `.xml` file, starting at `0`. Leading zeros are optional and ignored when determining the record. The number of text files must match the number of records.
 
 ## Supported MARC Fields
 

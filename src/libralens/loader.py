@@ -1,5 +1,6 @@
 from pathlib import Path
 import xml.etree.ElementTree as ET
+
 from .record import Record
 from .data import Data
 from .funcs import remove_namespaces
@@ -56,48 +57,64 @@ def load_xml_file(path: Path) -> list[Record]:
 
     return records
 
-def load_data(input_path: str | Path, gold_path: str | Path | None = None, platinum_path: str | Path | None = None) -> list[Data]:
+def load_data(
+    eval_path: str | Path,
+    gold_path: str | Path | None = None,
+    platinum_path: str | Path | None = None,
+    text_path: str | Path | None = None
+) -> list[Data]:
 
-    input_path = Path(input_path)
+    eval_path = Path(eval_path)
     gold_path = Path(gold_path) if gold_path is not None else None
     platinum_path = Path(platinum_path) if platinum_path is not None else None
+    text_path = Path(text_path) if text_path is not None else None
 
-    if input_path.is_file():
-        return pair_files(input_path, gold_path, platinum_path)
+    if eval_path.is_file():
+        return pair_files(eval_path, gold_path, platinum_path, text_path)
 
-    if input_path.is_dir():
+    if eval_path.is_dir():
 
         if gold_path is not None and not gold_path.is_dir():
-            raise ValueError("when input is a directory, gold must also be a directory")
-
+            raise ValueError("when eval is a directory, gold must also be a directory")
         if platinum_path is not None and not platinum_path.is_dir():
-            raise ValueError("when input is a directory, platinum must also be a directory")
+            raise ValueError("when eval is a directory, platinum must also be a directory")
+        if text_path is not None and not text_path.is_dir():
+            raise ValueError("when eval is a directory, text must also be a directory")
 
         data = []
 
-        for input_file in sorted(input_path.iterdir()):
-            if input_file.suffix.lower() not in {format.extension for format in InputFormat}:
+        for eval_file in sorted(eval_path.iterdir()):
+            if eval_file.suffix.lower() not in {format.extension for format in InputFormat}:
                 continue
 
             gold_file = None
             platinum_file = None
+            text_source = None
 
             if gold_path is not None:
-                gold_file = gold_path / input_file.name
+                gold_file = gold_path / eval_file.name
                 if not gold_file.exists():
-                    raise ValueError(f"no matching gold file found for: {input_file.name}")
+                    raise ValueError(f"no matching gold file found for: {eval_file.name}")
 
             if platinum_path is not None:
-                platinum_file = platinum_path / input_file.name
+                platinum_file = platinum_path / eval_file.name
                 if not platinum_file.exists():
-                    raise ValueError(f"no matching platinum file found for: {input_file.name}")
-                
-            data.extend(pair_files(input_file, gold_file, platinum_file))
+                    raise ValueError(f"no matching platinum file found for: {eval_file.name}")
+
+            if text_path is not None:
+                text_source = get_matching_text_source(eval_file, text_path)
+
+            data.extend(pair_files(eval_file, gold_file, platinum_file, text_source))
 
         return data
-    raise ValueError(f"path does not exist: {input_path}")
+    raise ValueError(f"path does not exist: {eval_path}")
 
-def pair_files(input_file: Path, gold_file: Path | None = None, platinum_file: Path | None = None) -> list[Data]:
+def pair_files(
+    input_file: Path,
+    gold_file: Path | None = None,
+    platinum_file: Path | None = None,
+    text_source: Path | None = None
+) -> list[Data]:
 
     records = load_file(input_file)
     gold_records = load_file(gold_file) if gold_file is not None else None
@@ -109,12 +126,56 @@ def pair_files(input_file: Path, gold_file: Path | None = None, platinum_file: P
     if platinum_records is not None and len(records) != len(platinum_records):
         raise ValueError(f"record count mismatch between {input_file.name} ({len(records)}) and platinum ({len(platinum_records)})")
 
+    texts = load_texts(text_source, len(records)) if text_source is not None else None
+
     data = []
 
     for i, record in enumerate(records):
 
         gold = gold_records[i] if gold_records is not None else None
         platinum = platinum_records[i] if platinum_records is not None else None
-        data.append(Data(record=record, gold=gold, platinum=platinum))
+        text = texts[i] if texts is not None else None
+        data.append(Data(record=record, gold=gold, platinum=platinum, text=text))
 
     return data
+
+def get_matching_text_source(eval_file: Path, text_path: Path) -> Path:
+
+    text_file = text_path / f"{eval_file.stem}.txt"
+    text_dir = text_path / eval_file.stem
+
+    if text_file.exists():
+        return text_file
+
+    if text_dir.exists() and text_dir.is_dir():
+        return text_dir
+
+    raise ValueError(f"no matching text found for: {eval_file.name}")
+
+def load_texts(text_source: Path, n_records: int) -> list[str]:
+
+    if text_source.is_file():
+        if n_records != 1:
+            raise ValueError(f"{text_source.name} cannot be matched to {n_records} records")
+        return [text_source.read_text(encoding="utf-8")]
+
+    if not text_source.is_dir():
+        raise ValueError(f"text path does not exist: {text_source}")
+
+    files = [file for file in text_source.glob("*.txt") if file.stem.isdigit()]
+    indices = [int(file.stem) for file in files]
+
+    if len(indices) != len(set(indices)):
+        raise ValueError(f"duplicate text indices found in {text_source}")
+
+    files = sorted(files, key=lambda file: int(file.stem))
+    indices = [int(file.stem) for file in files]
+    expected = list(range(len(files)))
+
+    if indices != expected:
+        raise ValueError(f"text files in {text_source} must be consecutively numbered starting at 0")
+
+    if len(files) != n_records:
+        raise ValueError(f"text count mismatch for {text_source.name}: {n_records} records, {len(files)} text files")
+
+    return [file.read_text(encoding="utf-8") for file in files]
