@@ -1,7 +1,9 @@
-from .example import ExampleMethod
+from .text_match import TextMatchMethod
+from .edit_distance import EditDistanceMethod
 
 METHOD_CLASSES = [
-    ExampleMethod,
+    TextMatchMethod,
+	EditDistanceMethod
 ]
 
 METHODS = {
