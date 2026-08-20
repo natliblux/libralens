@@ -31,7 +31,7 @@ from libralens import LibraLens
 
 ll = LibraLens(
     eval="records/",
-    methods=["method1", "method2"],
+    methods=["text-match", "edit-distance"],
     fields=["100", "245", "264"],
     gold="gold/",
     platinum="platinum/",
@@ -45,42 +45,42 @@ The parameters `fields`, `gold`, `platinum` and `text` are optional. If `fields`
 
 ### Command Line Interface
 
-Use method1 to evaluate a .txt file (single record only) or an .xml file (single or multiple records):
+Evaluate a .txt file (single record only) or an .xml file (single or multiple records) on the method text-match:
 
 ```bash
-libralens --eval record.txt --methods method1
+libralens --eval record.txt --methods text-match
 ```
 
 Evaluate record(s) using multiple methods:
 
 ```bash
-libralens --eval record.xml --methods method1 method2
+libralens --eval record.xml --methods text-match edit-distance
 
 ```
 
 Evaluate all records (within .xml/.txt files) within a directory:
 
 ```bash
-libralens --eval records/ --methods method1
+libralens --eval records/ --methods text-match
 ```
 
 Limit the evaluation to specific MARC fields:
 
 ```bash
-libralens --eval record.xml --methods method1 --fields 100 110 700 710
+libralens --eval record.xml --methods text-match --fields 100 110 700 710
 ```
 
 Provide corresponding gold standards and platinum standards:
 
 ```bash
-libralens --eval records/ --methods method1 --gold gold/ --platinum platinum/
+libralens --eval records/ --methods text-match --gold gold/ --platinum platinum/
 ```
 
 Certain methods require the corresponding document plain text:
 
 ```bash
 
-libralens --eval records/ --methods method1 --text text/
+libralens --eval records/ --methods text-match --text text/
 
 ```
 
@@ -136,6 +136,15 @@ export LIBRALENS_LLM_KEY="..."
 ```
 
 The API key can be omitted for endpoints that do not require authentication, such as some locally hosted models.
+
+## Available Methods
+
+LibraLens currently provides the following evaluation methods:
+
+| Method | Requirements | Description |
+|---|---|---|
+| `text-match` | plain text | Checks whether relevant fields values can be found in the corresponding document plain text. |
+| `edit-distance` | gold/platinum records | Compares relevant field values with their corresponding gold or platinum values using the edit distance. |
 
 ## Supported MARC Fields
 
