@@ -1,7 +1,8 @@
 from pathlib import Path
+import json
 from .constants import RELEVANT_FIELDS
 from .methods import METHODS
-from .loader import load_data
+from .loader import load_documents
 from .llm import LLM
 
 class LibraLens:
@@ -30,24 +31,32 @@ class LibraLens:
         self.method_instances = [METHODS[name]() for name in self.methods]
         self._validate_requirements()
         self.llm = (LLM() if any(method.requires_llm for method in self.method_instances) else None)
-        self.data = load_data(self.eval, self.gold, self.platinum, self.text)
+        self.documents = load_documents(self.eval, self.gold, self.platinum, self.text, self.fields)
 
     def run(self):
 
         if self.verbose:
             self._print_info()
 
-        results = []
+        results = [{} for _ in self.documents]
 
         for method in self.method_instances:
-            result = method.run(data=self.data, fields=self.fields, llm=self.llm)
-            results.append(result)
+            method_results = method.run(
+                docs=self.documents,
+                llm=self.llm
+            )
+
+            for i, result in enumerate(method_results):
+                results[i][method.name] = result
+
+        if self.verbose:
+            print(json.dumps(results, indent=4))
 
         return results
 
     def _print_info(self) -> None:
 
-        records = "record" if len(self.data) == 1 else "records"
+        documents = "document" if len(self.documents) == 1 else "documents"
         types = ["eval"]
         if self.gold is not None:
             types.append("gold")
@@ -56,7 +65,7 @@ class LibraLens:
         if self.text is not None:
             types.append("text")
 
-        print(f"loaded {len(self.data)} {records}: {", ".join(types)}")
+        print(f"loaded {len(self.documents)} {documents}: {", ".join(types)}")
         print(f"running methods: {", ".join(self.methods)}")
         print(f"considering fields: {", ".join(self.fields)}")
 
@@ -84,5 +93,7 @@ class LibraLens:
                 raise ValueError(f"method '{method.name}' requires gold records")
             if method.requires_platinum and self.platinum is None:
                 raise ValueError(f"method '{method.name}' requires platinum records")
+            if method.requires_gold_or_platinum and self.gold is None and self.platinum is None:
+                raise ValueError(f"method '{method.name}' requires gold or platinum records")
             if method.requires_text and self.text is None:
                 raise ValueError(f"method '{method.name}' requires plain text")
