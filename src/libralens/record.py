@@ -3,23 +3,68 @@ import re
 from libralens.constants import RELEVANT_FIELDS
 from .funcs import remove_namespaces
 from .enums import InputFormat
+from itertools import permutations
 
 class Record:
 
-    def __init__(self, data: str, input_format: InputFormat):
+    def __init__(
+        self,
+        data: str,
+        input_format: InputFormat,
+        fields: list[str] | None = None
+    ):
 
-        self.data = data
-        self.input_format = input_format
+        fields_filter = (set(RELEVANT_FIELDS.keys()) if fields is None else set(fields))
+
         self.fields = []
 
-        if self.input_format == InputFormat.XML:
-            self.parse_xml()
-        elif self.input_format == InputFormat.TEXT:
-            self.parse_text()
+        if input_format == InputFormat.XML:
+            self.parse_xml(data=data, fields_filter=fields_filter)
+        elif input_format == InputFormat.TEXT:
+            self.parse_text(data=data, fields_filter=fields_filter)
 
-    def parse_text(self):
+        self.parse_fields()
 
-        for line in self.data.splitlines():
+    def parse_fields(self) -> None:
+
+        self.isbn = None
+        self.people_names = []
+        self.company_names = []
+
+        for field in self.fields:
+            tag = field["tag"]
+            if tag == "020":
+                self.isbn = next((s["value"] for s in field["subfields"] if s["code"] == "a"), None)
+            elif tag in {"100", "700"}:
+                name_parts = [s["value"] for s in field["subfields"] if s["code"] in {"a", "b"}]
+                if name_parts:
+                    self.people_names.append(" ".join(name_parts))
+            elif tag in {"110", "710"}:
+                name_parts = [s["value"] for s in field["subfields"] if s["code"] in {"a", "b"}]
+                if name_parts:
+                    self.company_names.append(" ".join(name_parts))
+
+        self.people_name_variants = [self.get_people_name_variants(n) for n in self.people_names]
+
+    def get_people_name_variants(self, name: str) -> list[str]:
+
+        terms = [
+            term.strip()
+            for term in name.replace(",", " ").split()
+            if term.strip()
+        ]
+
+        variants = []
+
+        for ordering in permutations(terms):
+            variants.append(" ".join(ordering))
+            variants.append(", ".join(ordering))
+
+        return list(dict.fromkeys(variants))
+
+    def parse_text(self, data: str, fields_filter: set[str]) -> None:
+
+        for line in data.splitlines():
             if not line:
                 continue
 
@@ -32,7 +77,7 @@ class Record:
             line = line[index:]
             tag = line[:3]
 
-            if tag not in RELEVANT_FIELDS:
+            if tag not in fields_filter:
                 continue
 
             # MARC controlfields are 00X
@@ -77,15 +122,15 @@ class Record:
                     "subfields": subfields,
                 })
 
-    def parse_xml(self):
+    def parse_xml(self, data: str, fields_filter: set[str]) -> None:
 
-        root = ET.fromstring(self.data)
+        root = ET.fromstring(data)
         root = remove_namespaces(root)
 
         for field in root:
 
             tag = field.attrib.get("tag")
-            if tag not in RELEVANT_FIELDS:
+            if tag not in fields_filter:
                 continue
 
             if field.tag == "controlfield":
