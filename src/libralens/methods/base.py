@@ -6,9 +6,20 @@ class BaseMethod(ABC):
 
     requires_gold = False
     requires_platinum = False
+    requires_gold_or_platinum = False
     requires_text = False
     requires_llm = False
 
+    def run(self, docs, llm=None):
+
+        results = []
+
+        for doc in docs:
+            result = self.run_doc(doc, llm)
+            results.append(result)
+
+        return results
+
     @abstractmethod
-    def run(self, data, fields, llm=None):
+    def run_doc(self, doc, llm=None):
         pass
