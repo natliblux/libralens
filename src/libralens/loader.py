@@ -2,7 +2,7 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 
 from .record import Record
-from .data import Data
+from .document import Document
 from .funcs import remove_namespaces
 from .enums import InputFormat
 
@@ -23,23 +23,23 @@ def load_records(path: str | Path) -> list[Record]:
 
     raise ValueError(f"Path does not exist: {path}")
 
-def load_file(path: Path) -> list[Record]:
+def load_file(path: Path, fields: list[str] | None = None) -> list[Record]:
 
     suffix = path.suffix.lower()
 
     if suffix == InputFormat.XML.extension:
-        return load_xml_file(path)
+        return load_xml_file(path, fields)
     if suffix == InputFormat.TEXT.extension:
-        return load_text_file(path)
+        return load_text_file(path, fields)
 
     raise ValueError(f"unsupported file type: {path}")
 
-def load_text_file(path: Path) -> list[Record]:
+def load_text_file(path: Path, fields: list[str] | None = None,) -> list[Record]:
 
     data = path.read_text(encoding="utf-8")
-    return [Record(data, InputFormat.TEXT)]
+    return [Record(data, InputFormat.TEXT, fields)]
 
-def load_xml_file(path: Path) -> list[Record]:
+def load_xml_file(path: Path, fields: list[str] | None = None,) -> list[Record]:
 
     data = path.read_text(encoding="utf-8")
 
@@ -47,22 +47,23 @@ def load_xml_file(path: Path) -> list[Record]:
     root = remove_namespaces(root)
 
     if root.tag == "record":
-        return [Record(data, InputFormat.XML)]
+        return [Record(data, InputFormat.XML, fields)]
 
     records = []
 
     for element in root.findall(".//record"):
         record_xml = ET.tostring(element, encoding="unicode")
-        records.append(Record(record_xml, InputFormat.XML))
+        records.append(Record(record_xml, InputFormat.XML, fields))
 
     return records
 
-def load_data(
+def load_documents(
     eval_path: str | Path,
     gold_path: str | Path | None = None,
     platinum_path: str | Path | None = None,
-    text_path: str | Path | None = None
-) -> list[Data]:
+    text_path: str | Path | None = None,
+    fields: list[str] | None = None
+) -> list[Document]:
 
     eval_path = Path(eval_path)
     gold_path = Path(gold_path) if gold_path is not None else None
@@ -70,7 +71,7 @@ def load_data(
     text_path = Path(text_path) if text_path is not None else None
 
     if eval_path.is_file():
-        return pair_files(eval_path, gold_path, platinum_path, text_path)
+        return pair_files(eval_path, gold_path, platinum_path, text_path, fields)
 
     if eval_path.is_dir():
 
@@ -81,7 +82,7 @@ def load_data(
         if text_path is not None and not text_path.is_dir():
             raise ValueError("when eval is a directory, text must also be a directory")
 
-        data = []
+        documents = []
 
         for eval_file in sorted(eval_path.iterdir()):
             if eval_file.suffix.lower() not in {format.extension for format in InputFormat}:
@@ -104,21 +105,22 @@ def load_data(
             if text_path is not None:
                 text_source = get_matching_text_source(eval_file, text_path)
 
-            data.extend(pair_files(eval_file, gold_file, platinum_file, text_source))
+            documents.extend(pair_files(eval_file, gold_file, platinum_file, text_source, fields))
 
-        return data
+        return documents
     raise ValueError(f"path does not exist: {eval_path}")
 
 def pair_files(
     input_file: Path,
     gold_file: Path | None = None,
     platinum_file: Path | None = None,
-    text_source: Path | None = None
-) -> list[Data]:
+    text_source: Path | None = None,
+    fields: list[str] | None = None,
+) -> list[Document]:
 
-    records = load_file(input_file)
-    gold_records = load_file(gold_file) if gold_file is not None else None
-    platinum_records = load_file(platinum_file) if platinum_file is not None else None
+    records = load_file(input_file, fields)
+    gold_records = load_file(gold_file, fields) if gold_file is not None else None
+    platinum_records = load_file(platinum_file, fields) if platinum_file is not None else None
 
     if gold_records is not None and len(records) != len(gold_records):
         raise ValueError(f"record count mismatch between {input_file.name} ({len(records)}) and gold ({len(gold_records)})")
@@ -128,16 +130,16 @@ def pair_files(
 
     texts = load_texts(text_source, len(records)) if text_source is not None else None
 
-    data = []
+    documents = []
 
     for i, record in enumerate(records):
 
         gold = gold_records[i] if gold_records is not None else None
         platinum = platinum_records[i] if platinum_records is not None else None
         text = texts[i] if texts is not None else None
-        data.append(Data(record=record, gold=gold, platinum=platinum, text=text))
+        documents.append(Document(eval=record, gold=gold, platinum=platinum, text=text))
 
-    return data
+    return documents
 
 def get_matching_text_source(eval_file: Path, text_path: Path) -> Path:
 
