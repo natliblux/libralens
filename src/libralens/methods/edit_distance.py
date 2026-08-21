@@ -7,4 +7,7 @@ class EditDistanceMethod(BaseMethod):
 
     def run_doc(self, doc, llm=None):
 
-        return {}
+        return {
+            "score": 1.0,
+            "info": {}
+        }
