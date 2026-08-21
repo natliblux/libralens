@@ -28,13 +28,33 @@ class Record:
     def parse_fields(self) -> None:
 
         self.isbn = None
+        self.title = None
+        self.sub_title = None
+        self.parallel_title = None
         self.people_names = []
         self.company_names = []
+        self.locations = []
+        self.publishers = []
+        self.years = []
 
         for field in self.fields:
             tag = field["tag"]
             if tag == "020":
                 self.isbn = next((s["value"] for s in field["subfields"] if s["code"] == "a"), None)
+            elif tag == "245":
+                self.title = next((s["value"] for s in field["subfields"] if s["code"] == "a"), None)
+                self.sub_title = next((s["value"] for s in field["subfields"] if s["code"] == "b"), None)
+                self.parallel_title = next((s["value"] for s in field["subfields"] if s["code"] == "d"), None)
+            elif tag == "264":
+                location = next((s["value"] for s in field["subfields"] if s["code"] == "a"), None)
+                if location:
+                    self.locations.append(location)
+                publisher = next((s["value"] for s in field["subfields"] if s["code"] == "b"), None)
+                if publisher:
+                    self.publishers.append(publisher)
+                year = next((s["value"] for s in field["subfields"] if s["code"] == "c"), None)
+                if year:
+                    self.years.append(year)
             elif tag in {"100", "700"}:
                 name_parts = [s["value"] for s in field["subfields"] if s["code"] in {"a", "b"}]
                 if name_parts:
@@ -45,6 +65,16 @@ class Record:
                     self.company_names.append(" ".join(name_parts))
 
         self.people_name_variants = [self.get_people_name_variants(n) for n in self.people_names]
+        self.title_clean = self.remove_angle_brackets(self.title)
+        self.sub_title_clean = self.remove_angle_brackets(self.sub_title)
+        self.parallel_title_clean = self.remove_angle_brackets(self.parallel_title)
+        self.locations_confident = [l for l in self.locations if not l.endswith("]")]
+        self.years_confident = [y for y in self.years if not y.endswith("]") and not y.endswith("?")]
+
+    def remove_angle_brackets(self, s: str) -> str:
+        if s is None:
+            return None
+        return s.replace("<<", "").replace(">>", "")
 
     def get_people_name_variants(self, name: str) -> list[str]:
 
