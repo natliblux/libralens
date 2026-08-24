@@ -1,7 +1,7 @@
 import xml.etree.ElementTree as ET
 import re
 from libralens.constants import RELEVANT_FIELDS
-from .funcs import remove_namespaces
+from .funcs import remove_namespaces, remove_angle_brackets, join_subfields
 from .enums import InputFormat
 from itertools import permutations
 
@@ -22,6 +22,9 @@ class Record:
             self.parse_xml(data=data, fields_filter=fields_filter)
         elif input_format == InputFormat.TEXT:
             self.parse_text(data=data, fields_filter=fields_filter)
+
+        for i, field in enumerate(self.fields):
+            field["id"] = i
 
         self.parse_fields()
 
@@ -56,25 +59,19 @@ class Record:
                 if year:
                     self.years.append(year)
             elif tag in {"100", "700"}:
-                name_parts = [s["value"] for s in field["subfields"] if s["code"] in {"a", "b"}]
-                if name_parts:
-                    self.people_names.append(" ".join(name_parts))
-            elif tag in {"110", "710"}:
-                name_parts = [s["value"] for s in field["subfields"] if s["code"] in {"a", "b"}]
-                if name_parts:
-                    self.company_names.append(" ".join(name_parts))
+                name = join_subfields(field, {"a", "b"})
+                if name:
+                    self.people_names.append(name)
+                name = join_subfields(field, {"a", "b"})
+                if name:
+                    self.company_names.append(name)
 
         self.people_name_variants = [self.get_people_name_variants(n) for n in self.people_names]
-        self.title_clean = self.remove_angle_brackets(self.title)
-        self.sub_title_clean = self.remove_angle_brackets(self.sub_title)
-        self.parallel_title_clean = self.remove_angle_brackets(self.parallel_title)
+        self.title_clean = remove_angle_brackets(self.title)
+        self.sub_title_clean = remove_angle_brackets(self.sub_title)
+        self.parallel_title_clean = remove_angle_brackets(self.parallel_title)
         self.locations_confident = [l for l in self.locations if not l.endswith("]")]
         self.years_confident = [y for y in self.years if not y.endswith("]") and not y.endswith("?")]
-
-    def remove_angle_brackets(self, s: str) -> str:
-        if s is None:
-            return None
-        return s.replace("<<", "").replace(">>", "")
 
     def get_people_name_variants(self, name: str) -> list[str]:
 
