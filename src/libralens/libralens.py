@@ -88,7 +88,9 @@ class LibraLens:
 
     def _print_info(self) -> None:
 
-        documents = "document" if len(self.documents) == 1 else "documents"
+        documents_str = "document" if len(self.documents) == 1 else "documents"
+        methods_str = "method" if len(self.methods) == 1 else "methods"
+        fields_str = "field" if len(self.fields) == 1 else "fields"
         types = ["eval"]
         if self.gold is not None:
             types.append("gold")
@@ -96,10 +98,15 @@ class LibraLens:
             types.append("platinum")
         if self.text is not None:
             types.append("text")
-
-        print(f"loaded {len(self.documents)} {documents}: {", ".join(types)}")
-        print(f"running methods: {", ".join(self.methods)}")
-        print(f"considering fields: {", ".join(self.fields)}")
+        labels = [
+            f"{len(self.documents)} {documents_str}",
+            f"{len(self.methods)} {methods_str}",
+            f"{len(self.fields)} {fields_str}",
+        ]
+        width = max(len(label) for label in labels)
+        print(f"{labels[0]:<{width}} - {', '.join(types)}")
+        print(f"{labels[1]:<{width}} - {', '.join(self.methods)}")
+        print(f"{labels[2]:<{width}} - {', '.join(self.fields)}")
         print()
 
     def _print_results(self) -> None:
