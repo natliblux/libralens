@@ -2,6 +2,16 @@ import xml.etree.ElementTree as ET
 import re
 import unicodedata
 
+def join_subfields(field: dict, codes: set[str]) -> str:
+
+    values = [
+        subfield["value"]
+        for subfield in field["subfields"]
+        if subfield["code"] in codes
+    ]
+
+    return " ".join(values)
+
 def remove_namespaces(root: ET.Element) -> ET.Element:
 
     for elem in root.iter():
@@ -16,3 +26,8 @@ def normalize_text(text: str) -> str:
     text = text.lower()
     text = re.sub(r"\s+", " ", text)
     return text.strip()
+
+def remove_angle_brackets(s: str) -> str:
+    if s is None:
+        return None
+    return s.replace("<<", "").replace(">>", "")
