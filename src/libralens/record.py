@@ -33,6 +33,7 @@ class Record:
         self.isbn = None
         self.title = None
         self.sub_title = None
+        self.contributors = None
         self.parallel_title = None
         self.people_names = []
         self.company_names = []
@@ -47,6 +48,7 @@ class Record:
             elif tag == "245":
                 self.title = next((s["value"] for s in field["subfields"] if s["code"] == "a"), None)
                 self.sub_title = next((s["value"] for s in field["subfields"] if s["code"] == "b"), None)
+                self.contributors = next((s["value"] for s in field["subfields"] if s["code"] == "c"), None)
                 self.parallel_title = next((s["value"] for s in field["subfields"] if s["code"] == "d"), None)
             elif tag == "264":
                 location = next((s["value"] for s in field["subfields"] if s["code"] == "a"), None)
@@ -62,6 +64,7 @@ class Record:
                 name = join_subfields(field, {"a", "b"})
                 if name:
                     self.people_names.append(name)
+            elif tag in {"110", "710"}:
                 name = join_subfields(field, {"a", "b"})
                 if name:
                     self.company_names.append(name)
