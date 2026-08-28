@@ -23,23 +23,23 @@ def load_records(path: str | Path) -> list[Record]:
 
     raise ValueError(f"Path does not exist: {path}")
 
-def load_file(path: Path, fields: list[str] | None = None) -> list[Record]:
+def load_file(path: Path) -> list[Record]:
 
     suffix = path.suffix.lower()
 
     if suffix == InputFormat.XML.extension:
-        return load_xml_file(path, fields)
+        return load_xml_file(path)
     if suffix == InputFormat.TEXT.extension:
-        return load_text_file(path, fields)
+        return load_text_file(path)
 
     raise ValueError(f"unsupported file type: {path}")
 
-def load_text_file(path: Path, fields: list[str] | None = None,) -> list[Record]:
+def load_text_file(path: Path) -> list[Record]:
 
     data = path.read_text(encoding="utf-8")
-    return [Record(data, InputFormat.TEXT, fields)]
+    return [Record(data, InputFormat.TEXT)]
 
-def load_xml_file(path: Path, fields: list[str] | None = None,) -> list[Record]:
+def load_xml_file(path: Path) -> list[Record]:
 
     data = path.read_text(encoding="utf-8")
 
@@ -47,13 +47,13 @@ def load_xml_file(path: Path, fields: list[str] | None = None,) -> list[Record]:
     root = remove_namespaces(root)
 
     if root.tag == "record":
-        return [Record(data, InputFormat.XML, fields)]
+        return [Record(data, InputFormat.XML)]
 
     records = []
 
     for element in root.findall(".//record"):
         record_xml = ET.tostring(element, encoding="unicode")
-        records.append(Record(record_xml, InputFormat.XML, fields))
+        records.append(Record(record_xml, InputFormat.XML))
 
     return records
 
@@ -62,7 +62,6 @@ def load_documents(
     gold_path: str | Path | None = None,
     platinum_path: str | Path | None = None,
     text_path: str | Path | None = None,
-    fields: list[str] | None = None
 ) -> list[Document]:
 
     eval_path = Path(eval_path)
@@ -71,7 +70,12 @@ def load_documents(
     text_path = Path(text_path) if text_path is not None else None
 
     if eval_path.is_file():
-        return pair_files(eval_path, gold_path, platinum_path, text_path, fields)
+
+        if gold_path is not None and not gold_path.is_file():
+            raise ValueError("when eval is a file, gold must also be a file")
+        if platinum_path is not None and not platinum_path.is_file():
+            raise ValueError("when eval is a file, platinum must also be a file")
+        return pair_files(eval_path, gold_path, platinum_path, text_path)
 
     if eval_path.is_dir():
 
@@ -105,28 +109,27 @@ def load_documents(
             if text_path is not None:
                 text_source = get_matching_text_source(eval_file, text_path)
 
-            documents.extend(pair_files(eval_file, gold_file, platinum_file, text_source, fields))
+            documents.extend(pair_files(eval_file, gold_file, platinum_file, text_source))
 
         return documents
     raise ValueError(f"path does not exist: {eval_path}")
 
 def pair_files(
-    input_file: Path,
+    eval_file: Path,
     gold_file: Path | None = None,
     platinum_file: Path | None = None,
     text_source: Path | None = None,
-    fields: list[str] | None = None,
 ) -> list[Document]:
 
-    records = load_file(input_file, fields)
-    gold_records = load_file(gold_file, fields) if gold_file is not None else None
-    platinum_records = load_file(platinum_file, fields) if platinum_file is not None else None
+    records = load_file(eval_file)
+    gold_records = load_file(gold_file) if gold_file is not None else None
+    platinum_records = load_file(platinum_file) if platinum_file is not None else None
 
     if gold_records is not None and len(records) != len(gold_records):
-        raise ValueError(f"record count mismatch between {input_file.name} ({len(records)}) and gold ({len(gold_records)})")
+        raise ValueError(f"record count mismatch between {eval_file.name} ({len(records)}) and gold ({len(gold_records)})")
 
     if platinum_records is not None and len(records) != len(platinum_records):
-        raise ValueError(f"record count mismatch between {input_file.name} ({len(records)}) and platinum ({len(platinum_records)})")
+        raise ValueError(f"record count mismatch between {eval_file.name} ({len(records)}) and platinum ({len(platinum_records)})")
 
     texts = load_texts(text_source, len(records)) if text_source is not None else None
 
