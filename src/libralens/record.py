@@ -7,21 +7,14 @@ from itertools import permutations
 
 class Record:
 
-    def __init__(
-        self,
-        data: str,
-        input_format: InputFormat,
-        fields: list[str] | None = None
-    ):
-
-        fields_filter = (set(RELEVANT_FIELDS.keys()) if fields is None else set(fields))
+    def __init__(self, data: str, input_format: InputFormat):
 
         self.fields = []
 
         if input_format == InputFormat.XML:
-            self.parse_xml(data=data, fields_filter=fields_filter)
+            self.parse_xml(data=data)
         elif input_format == InputFormat.TEXT:
-            self.parse_text(data=data, fields_filter=fields_filter)
+            self.parse_text(data=data)
 
         for i, field in enumerate(self.fields):
             field["id"] = i
@@ -92,7 +85,7 @@ class Record:
 
         return list(dict.fromkeys(variants))
 
-    def parse_text(self, data: str, fields_filter: set[str]) -> None:
+    def parse_text(self, data: str) -> None:
 
         for line in data.splitlines():
             if not line:
@@ -107,16 +100,13 @@ class Record:
             line = line[index:]
             tag = line[:3]
 
-            if tag not in fields_filter:
+            if tag not in RELEVANT_FIELDS:
                 continue
 
             # MARC controlfields are 00X
             if tag.startswith("00"):
                 value = line[4:].strip()
-                self.fields.append({
-                    "tag": tag,
-                    "value": value,
-                })
+                self.fields.append({"tag": tag, "value": value})
 
             else:
                 if len(line) < 6:
@@ -141,10 +131,7 @@ class Record:
                     if value.endswith("##"):
                         value = value[:-2]
 
-                    subfields.append({
-                        "code": code,
-                        "value": value,
-                    })
+                    subfields.append({"code": code, "value": value})
                 self.fields.append({
                     "tag": tag,
                     "ind1": ind1,
@@ -152,7 +139,7 @@ class Record:
                     "subfields": subfields,
                 })
 
-    def parse_xml(self, data: str, fields_filter: set[str]) -> None:
+    def parse_xml(self, data: str) -> None:
 
         root = ET.fromstring(data)
         root = remove_namespaces(root)
@@ -160,7 +147,7 @@ class Record:
         for field in root:
 
             tag = field.attrib.get("tag")
-            if tag not in fields_filter:
+            if tag not in RELEVANT_FIELDS:
                 continue
 
             if field.tag == "controlfield":
