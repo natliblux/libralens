@@ -7,7 +7,7 @@ class EditDistanceMethod(BaseMethod):
     name = "edit-distance"
     requires_gold_or_platinum = True
 
-    def run_doc(self, doc, llm=None):
+    def run_doc(self, doc, fields, llm=None):
 
         scores = []
         info = {}
@@ -22,11 +22,7 @@ class EditDistanceMethod(BaseMethod):
             if reference is None:
                 continue
 
-            result = self.compare_records(
-                doc.eval,
-                reference,
-                mapping,
-            )
+            result = self.compare_records(doc.eval, reference, mapping, fields)
 
             if result["score"] is not None:
                 scores.append(result["score"])
@@ -38,12 +34,14 @@ class EditDistanceMethod(BaseMethod):
             "info": info,
         }
 
-    def compare_records(self, eval_record, reference_record, mapping) -> dict:
+    def compare_records(self, eval_record, reference_record, mapping, fields) -> dict:
 
         comparisons = []
 
-        self.compare_mapped_names(eval_record, reference_record, mapping, comparisons)
-        self.compare_245(eval_record, reference_record, comparisons)
+        self.compare_mapped_names(eval_record, reference_record, mapping, fields, comparisons)
+
+        if "245" in fields:
+            self.compare_245(eval_record, reference_record, comparisons)
 
         scores = [comparison["score"] for comparison in comparisons]
 
@@ -52,9 +50,9 @@ class EditDistanceMethod(BaseMethod):
             "comparisons": comparisons,
         }
 
-    def compare_mapped_names(self, eval_record, reference_record, mapping, comparisons) -> None:
+    def compare_mapped_names(self, eval_record, reference_record, mapping, fields, comparisons) -> None:
 
-        tags = {"100", "110", "700", "710"}
+        tags = {"100", "110", "700", "710"} & set(fields)
 
         for eval_field in eval_record.fields:
 
@@ -79,10 +77,7 @@ class EditDistanceMethod(BaseMethod):
                 "sub_fields": ["a", "b"],
                 "eval_text": eval_text,
                 "reference_text": reference_text,
-                "score": ratio(
-                    eval_text,
-                    reference_text,
-                ),
+                "score": ratio(eval_text, reference_text),
             })
 
     def compare_245(self, eval_record, reference_record, comparisons) -> None:
