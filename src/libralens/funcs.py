@@ -2,6 +2,45 @@ import xml.etree.ElementTree as ET
 import re
 import unicodedata
 
+def record_to_xml(record) -> str:
+
+    root = ET.Element("record", xmlns="http://www.loc.gov/MARC21/slim")
+
+    for field in record.fields:
+
+        if "value" in field:
+            element = ET.SubElement(
+                root,
+                "controlfield",
+                tag=field["tag"]
+            )
+            element.text = field["value"]
+
+        else:
+            element = ET.SubElement(
+                root,
+                "datafield",
+                tag=field["tag"],
+                ind1=field["ind1"],
+                ind2=field["ind2"]
+            )
+
+            for subfield in field["subfields"]:
+                subfield_element = ET.SubElement(
+                    element,
+                    "subfield",
+                    code=subfield["code"]
+                )
+                subfield_element.text = subfield["value"]
+
+    ET.indent(root, space="    ")
+
+    return ET.tostring(
+        root,
+        encoding="unicode",
+        xml_declaration=False
+    )
+
 def join_subfields(field: dict, codes: set[str]) -> str:
 
     values = [
