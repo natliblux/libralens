@@ -52,13 +52,41 @@ ll = LibraLens(
     fields=["100", "245", "264"],
     gold="gold/",
     platinum="platinum/",
+    text="text/",
+    output="output/"
+)
+
+results = ll.run()
+```
+
+The parameters `fields`, `gold`, `platinum`, `text` and `output` are optional. If `fields` is omitted, all supported fields are considered by default.
+
+For more complex evaluations, different fields can be selected for each method using `Run`:
+
+```python
+from libralens import LibraLens, Run
+
+ll = LibraLens(
+    eval="records/",
+    runs=[
+        Run(
+            method="text-match",
+            fields=["020", "245", "264"]
+        ),
+        Run(
+            method="edit-distance",
+            fields=["100", "110", "700", "710"]
+        )
+    ],
+    gold="gold/",
+    platinum="platinum/",
     text="text/"
 )
 
 results = ll.run()
 ```
 
-The parameters `fields`, `gold`, `platinum` and `text` are optional. If `fields` is omitted, all supported fields are considered by default.
+The `methods` and `runs` parameters are mutually exclusive. When using `runs`, fields are configured individually for each run and the global `fields` parameter cannot be used. If `fields` is omitted from a `Run`, all supported fields are considered for that run.
 
 ### Command Line Interface
 
@@ -86,6 +114,31 @@ Limit the evaluation to specific MARC fields:
 libralens --eval record.xml --methods text-match --fields 100 110 700 710
 ```
 
+For more complex evaluations, different fields can be selected for each method through a JSON runs file:
+
+```json
+{
+    "runs": [
+        {
+            "method": "text-match",
+            "fields": ["020", "245", "264"]
+        },
+        {
+            "method": "edit-distance",
+            "fields": ["100", "110", "700", "710"]
+        }
+    ]
+}
+```
+
+Run the configuration using:
+
+```bash
+libralens --eval records/ --runs runs.json
+```
+
+The `--methods` and `--runs` options are mutually exclusive. When using `--runs`, fields are configured individually for each run and `--fields` cannot be used. If `fields` is omitted from a run, all supported fields are considered for that run.
+
 Provide corresponding gold and platinum standards:
 
 ```bash
@@ -98,7 +151,13 @@ Certain methods require the corresponding document's plain text:
 libralens --eval records/ --methods text-match --text text/
 ```
 
-The short forms `-e`, `-m`, `-f`, `-g`, `-p` and `-t` can be used instead of their corresponding long options. Check `--help` for more info.
+Export detailed evaluation results and the corresponding document data to an output directory:
+```bash
+libralens --eval records/ --methods text-match --text text/ --output results/
+```
+The output directory contains a `results.json` file with detailed scores and diagnostic information, as well as the corresponding eval, gold, platinum, and plain-text data for each document.
+
+The short forms `-e`, `-m`, `-r`, `-f`, `-g`, `-p`, `-t` and `-o` can be used instead of their corresponding long options. Check `--help` for more info.
 
 ## Results
 
@@ -136,7 +195,7 @@ print(ll.method_scores)
 # }
 
 print(ll.document_scores)
-# [0.8, 0.833, 0.786, 0.786]
+# {0: 0.8, 1: 0.833, 2: 0.786, 3: 0.786}
 ```
 
 `ll.results` contains the detailed results organized by document and method:
@@ -144,6 +203,7 @@ print(ll.document_scores)
 ```python
 [
     {
+        "id": 0,
         "score": 0.8,
         "methods": {
             "text-match": {
@@ -184,28 +244,34 @@ dataset score
   0.801 overall
 ```
 
-Detailed diagnostic information is available through the Python library.
+Detailed diagnostic information is available through the Python library or can be exported using the `--output` option.
 
 ## Configuration
 
 ### Document Matching
 
-Corresponding eval, gold, platinum, and plain-text data is matched through base filenames. For a single-record file, the following files are considered to belong to the same document:
+When individual files are provided explicitly for eval, gold, platinum, or plain text, their filenames do not need to match. The provided files are considered to belong to the same document. When directories are provided, corresponding eval, gold, platinum, and plain-text data is matched through base filenames. For example:
 
 ```
 eval/
-    record.xml
+    record0.xml
+    record1.xml
 gold/
-    record.xml
+    record0.xml
+    record1.xml
 platinum/
-    record.xml
+    record0.xml
+    record1.xml
 text/
-    record.txt
+    record0.txt
+    record1.txt
 ```
 
-Gold and platinum files must have the same filename as the corresponding eval file. Plain text files use the same base filename but always use the `.txt` extension.
+Plain-text files use the same base filename but always use the .txt extension. When corresponding .xml files contain multiple records, eval, gold, and platinum records are paired by their order within the file. 
 
-When matched `.xml` files contain multiple records, eval, gold and platinum records are paired by their order within the file. The number of records must therefore match across the corresponding files. For a multi-record `.xml` file, the corresponding plain text is provided through a directory with the same base filename:
+**Caution**: Record order must be consistent across corresponding eval, gold and platinum files. LibraLens does not verify that records at the same position represent the same bibliographic document. Incorrect ordering may therefore cause records to be evaluated against the wrong gold or platinum standard.
+
+For a multi-record `.xml` file, the corresponding plain text is provided through a directory with the same base filename:
 
 ```
 eval/
@@ -218,7 +284,6 @@ text/
     records/
         00.txt
         01.txt
-        02.txt
 ```
 The numbered text files correspond to the records by their order within the `.xml` file, starting at `0`. Leading zeros are optional and do not affect matching. The number of text files must match the number of records.
 
@@ -249,7 +314,7 @@ LibraLens currently provides the following evaluation methods:
 | Method | Requirements | Description |
 |---|---|---|
 | `text-match` | plain text | Checks whether relevant field values can be found in the corresponding document's plain text. |
-| `edit-distance` | gold/platinum records | Compares relevant field values with their corresponding gold or platinum values using the edit distance. |
+| `edit-distance` | gold and/or platinum | Compares relevant field values with their corresponding gold or platinum values using the edit distance. |
 
 ### Supported MARC Fields
 
