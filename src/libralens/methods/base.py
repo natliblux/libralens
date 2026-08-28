@@ -10,16 +10,16 @@ class BaseMethod(ABC):
     requires_text = False
     requires_llm = False
 
-    def run(self, docs, llm=None):
+    def run(self, docs, fields, llm=None):
 
         results = []
 
         for doc in docs:
-            result = self.run_doc(doc, llm)
+            result = self.run_doc(doc, fields, llm)
             results.append(result)
 
         return results
 
     @abstractmethod
-    def run_doc(self, doc, llm=None):
+    def run_doc(self, doc, fields, llm=None):
         pass
