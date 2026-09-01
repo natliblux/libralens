@@ -1,3 +1,5 @@
+from .funcs import load_codes
+
 RELEVANT_FIELDS = {
     "008": [],
     "020": ["a"],
@@ -12,6 +14,30 @@ RELEVANT_FIELDS = {
     "710": ["a", "b", "d", "0", "e", "4"],
 }
 
+MAPPED_FIELDS = {"100", "110", "700", "710"}
+
 LLM_URL_ENV = "LIBRALENS_LLM_URL"
 LLM_MODEL_ENV = "LIBRALENS_LLM_MODEL"
 LLM_KEY_ENV = "LIBRALENS_LLM_KEY"
+
+MARC_LANGUAGE_CODES = load_codes("language_codes.json")
+MARC_RELATOR_CODES = load_codes("relator_codes.json")
+
+TITLE_SEMANTICS_SYSTEM_PROMPT = """
+Identify semantically important words or concepts that are present in one title but missing from another.
+
+Ignore articles, prepositions, conjunctions, punctuation, capitalization, and other semantically unimportant words.
+
+If nothing important is missing, respond exactly with:
+OK
+
+Otherwise, respond only with a comma-separated list of the missing words or concepts.
+""".strip()
+
+TITLE_SEMANTICS_USER_PROMPT = """
+Title 1:
+[TITLE_1]
+
+Title 2:
+[TITLE_2]
+""".strip()

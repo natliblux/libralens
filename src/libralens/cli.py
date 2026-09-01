@@ -1,6 +1,6 @@
 import argparse
 from .libralens import LibraLens
-from .config import load_runs
+from .run import load_runs
 
 def main():
 
@@ -8,7 +8,7 @@ def main():
 
     parser.add_argument("-e", "--eval", required=True, help="file (.xml or .txt) or directory containing marc records to be evaluated")
 
-    run_group = parser.add_mutually_exclusive_group(required=True)
+    run_group = parser.add_mutually_exclusive_group(required=False)
     run_group.add_argument("-m", "--methods", nargs="+", help="evaluation methods to run")
     run_group.add_argument("-r", "--runs", help="json file defining evaluation runs")
 
@@ -50,7 +50,7 @@ def main():
                 verbose=True
             )
 
-        libralens.run()
+        libralens.evaluate()
 
     except ValueError as e:
         parser.error(str(e))

@@ -5,3 +5,4 @@ __pycache__/
 test_library.py
 runs.json
 new-data/
+.env

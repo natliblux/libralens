@@ -23,21 +23,49 @@ class Record:
 
     def parse_fields(self) -> None:
 
-        self.isbn = None
+        self.zerozeroeight = None
         self.title = None
         self.sub_title = None
         self.contributors = None
         self.parallel_title = None
-        self.people_names = []
-        self.company_names = []
+        self.isbn = None
+        self.isbn_variants = []
+        self.lang_codes = []
         self.locations = []
         self.publishers = []
         self.years = []
+        self.people_names = {
+            "100": [],
+            "700": [],
+        }
+        self.company_names = {
+            "110": [],
+            "710": [],
+        }
+        self.relators = {
+            "100": [],
+            "110": [],
+            "700": [],
+            "710": [],
+        }
+        self.authorities = {
+            "100": [],
+            "110": [],
+            "700": [],
+            "710": [],
+        }
 
         for field in self.fields:
             tag = field["tag"]
+            if tag == "008":
+                self.zerozeroeight = field["value"]
             if tag == "020":
-                self.isbn = next((s["value"] for s in field["subfields"] if s["code"] == "a"), None)
+                isbn_raw = next((s["value"] for s in field["subfields"] if s["code"] == "a"), None)
+                self.isbn = self.normalize_isbn(isbn_raw)
+                self.isbn_variants = self.get_isbn_variants(isbn_raw)
+
+            if tag == "041":
+                self.lang_codes = [s["value"] for s in field["subfields"] if s["code"] == "a"]
             elif tag == "245":
                 self.title = next((s["value"] for s in field["subfields"] if s["code"] == "a"), None)
                 self.sub_title = next((s["value"] for s in field["subfields"] if s["code"] == "b"), None)
@@ -56,18 +84,38 @@ class Record:
             elif tag in {"100", "700"}:
                 name = join_subfields(field, {"a", "b"})
                 if name:
-                    self.people_names.append(name)
+                    self.people_names[tag].append(name)
+                relator = next((s["value"] for s in field["subfields"] if s["code"] == "4"), None)
+                if relator:
+                    self.relators[tag].append(relator)
+
+                authority = next((s["value"] for s in field["subfields"] if s["code"] == "0"), None)
+                if authority:
+                    self.authorities[tag].append(authority)
             elif tag in {"110", "710"}:
                 name = join_subfields(field, {"a", "b"})
                 if name:
-                    self.company_names.append(name)
+                    self.company_names[tag].append(name)
+                relator = next((s["value"] for s in field["subfields"] if s["code"] == "4"), None)
+                if relator:
+                    self.relators[tag].append(relator)
+                authority = next((s["value"] for s in field["subfields"] if s["code"] == "0"), None)
+                if authority:
+                    self.authorities[tag].append(authority)
 
-        self.people_name_variants = [self.get_people_name_variants(n) for n in self.people_names]
         self.title_clean = remove_angle_brackets(self.title)
         self.sub_title_clean = remove_angle_brackets(self.sub_title)
         self.parallel_title_clean = remove_angle_brackets(self.parallel_title)
         self.locations_confident = [l for l in self.locations if not l.endswith("]")]
         self.years_confident = [y for y in self.years if not y.endswith("]") and not y.endswith("?")]
+        self.people_name_variants = {tag: [self.get_people_name_variants(name) for name in names] for tag, names in self.people_names.items()}
+
+    def get_isbn_variants(self, isbn: str | None) -> list[str]:
+
+        if isbn is None:
+            return []
+        compact = isbn.replace("-", "").replace(" ", "")
+        return list(dict.fromkeys([isbn, compact, isbn.replace("-", " ")]))
 
     def get_people_name_variants(self, name: str) -> list[str]:
 
@@ -187,3 +235,10 @@ class Record:
 
         # Replace ##e, ##4, etc. by $e, $4, but only for allowed subfields
         return re.sub(rf"##(?=[{allowed}])", "$", content)
+
+    def normalize_isbn(self, isbn: str | None) -> str | None:
+
+        if isbn is None:
+            return None
+
+        return "".join(c for c in isbn if c.isdigit() or c in {"X", "x"})

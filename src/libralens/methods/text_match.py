@@ -1,50 +1,50 @@
 from .base import BaseMethod
-from ..funcs import normalize_text, join_subfields
+from ..funcs import normalize_text
 
 class TextMatchMethod(BaseMethod):
 
     name = "text-match"
+    supported_fields = {
+        "020": ("a",),
+        "100": ("a", "b"),
+        "110": ("a", "b"),
+        "245": ("a", "b", "d"),
+        "264": ("a", "b", "c"),
+        "700": ("a", "b"),
+        "710": ("a", "b"),
+    }
     requires_text = True
 
     def run_doc(self, doc, fields, llm=None):
 
         terms = []
 
-        if "020" in fields:
-            terms.append([doc.eval.isbn])
+        if "020" in fields and "a" in fields["020"]:
+            terms.append(doc.eval.isbn_variants)
 
         if "245" in fields:
-            terms.extend([
-                [doc.eval.title_clean],
-                [doc.eval.sub_title_clean],
-                [doc.eval.parallel_title_clean]
-            ])
-
-        person_tags = {"100", "700"} & set(fields)
-
-        for field in doc.eval.fields:
-            if field["tag"] not in person_tags:
-                continue
-            name = join_subfields(field, {"a", "b"})
-            if name:
-                terms.append(doc.eval.get_people_name_variants(name))
-
-        company_tags = {"110", "710"} & set(fields)
-
-        for field in doc.eval.fields:
-
-            if field["tag"] not in company_tags:
-                continue
-            name = join_subfields(field, {"a", "b"})
-            if name:
-                terms.append([name])
+            if "a" in fields["245"]:
+                terms.append([doc.eval.title_clean])
+            if "b" in fields["245"]:
+                terms.append([doc.eval.sub_title_clean])
+            if "d" in fields["245"]:
+                terms.append([doc.eval.parallel_title_clean])
 
         if "264" in fields:
-            terms.extend([
-                doc.eval.locations_confident,
-                doc.eval.publishers,
-                doc.eval.years_confident
-            ])
+            if "a" in fields["264"]:
+                terms.append(doc.eval.locations_confident)
+            if "b" in fields["264"]:
+                terms.append(doc.eval.publishers)
+            if "c" in fields["264"]:
+                terms.append(doc.eval.years_confident)
+
+        for tag in {"100", "700"} & fields.keys():
+            if fields[tag] & {"a", "b"}:
+                terms.extend(doc.eval.people_name_variants[tag])
+
+        for tag in {"110", "710"} & fields.keys():
+            if fields[tag] & {"a", "b"}:
+                terms.extend([[name] for name in doc.eval.company_names[tag]])
 
         matched_terms = []
         unmatched = []
@@ -52,7 +52,6 @@ class TextMatchMethod(BaseMethod):
         matched_count = 0
 
         for term_list in terms:
-
             term_list = [term for term in term_list if term is not None]
 
             if not term_list:
@@ -69,7 +68,7 @@ class TextMatchMethod(BaseMethod):
             else:
                 unmatched.append(term_list)
 
-        score = (matched_count / total if total else 1.0)
+        score = matched_count / total if total else 1.0
 
         return {
             "score": score,

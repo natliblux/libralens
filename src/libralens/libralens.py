@@ -1,9 +1,8 @@
 from pathlib import Path
 from .run import Run
 import shutil
-from .funcs import record_to_xml
+from .funcs import record_to_xml, resolve_fields
 import json
-from .constants import RELEVANT_FIELDS
 from .methods import METHODS
 from .loader import load_documents
 from .llm import LLM
@@ -34,8 +33,7 @@ class LibraLens:
 
         if methods is not None and runs is not None:
             raise ValueError("provide either methods or runs, not both")
-        if methods is None and runs is None:
-            raise ValueError("methods or runs must be provided")
+
         if runs is not None and fields is not None:
             raise ValueError("fields cannot be provided when runs are used")
 
@@ -43,16 +41,23 @@ class LibraLens:
             self.runs = [
                 Run(
                     method=run.method,
-                    fields=list(RELEVANT_FIELDS.keys()) if run.fields is None else list(dict.fromkeys(run.fields))
+                    fields=run.fields
                 )
                 for run in runs
             ]
         else:
-            methods = list(dict.fromkeys(methods))
-            selected_fields = list(RELEVANT_FIELDS.keys()) if fields is None else list(dict.fromkeys(fields))
-            self.runs = [Run(method=method, fields=list(selected_fields)) for method in methods]
+            methods = list(METHODS.keys()) if methods is None else list(dict.fromkeys(methods))
+            self.runs = [
+                Run(
+                    method=method,
+                    fields=fields
+                )
+                for method in methods
+            ]
 
         self._validate_runs()
+        for run in self.runs:
+            run.fields = resolve_fields(run.fields, METHODS[run.method].supported_fields)
         self.methods = [run.method for run in self.runs]
         self.fields = list(dict.fromkeys(field for run in self.runs for field in run.fields))
         self.method_instances = {run.method: METHODS[run.method]() for run in self.runs}
@@ -64,7 +69,7 @@ class LibraLens:
         self.document_scores = {}
         self.results = []
 
-    def run(self) -> list[dict]:
+    def evaluate(self) -> list[dict]:
 
         if self.verbose:
             self._print_info()
@@ -74,11 +79,12 @@ class LibraLens:
             for i in range(len(self.documents))
         ]
 
+        method_width = max(len(run.method) for run in self.runs)
+
         for run in self.runs:
 
             method = self.method_instances[run.method]
-
-            method_results = method.run(docs=self.documents, fields=run.fields, llm=self.llm)
+            method_results = method.run(docs=self.documents, fields=run.fields, llm=self.llm, verbose=self.verbose, desc=f"{run.method:<{method_width}}")
 
             for i, result in enumerate(method_results):
                 self.results[i]["methods"][run.method] = result
@@ -130,6 +136,18 @@ class LibraLens:
 
         self.score = sum(scores) / len(scores) if scores else None
 
+    def _format_fields(self, fields) -> str:
+
+        values = []
+
+        for field, subfields in fields.items():
+            if subfields is None:
+                values.append(field)
+            else:
+                values.extend(f"{field}.{subfield}" for subfield in sorted(subfields))
+
+        return ", ".join(values)
+
     def _print_info(self) -> None:
 
         documents_str = "document" if len(self.documents) == 1 else "documents"
@@ -148,21 +166,27 @@ class LibraLens:
 
         for run in self.runs:
             print(run.method)
-            print(f"  {', '.join(run.fields)}")
+            print(f"  {self._format_fields(run.fields)}")
             print()
 
     def _print_results(self) -> None:
 
+        print()
         print("document scores")
         for document_id, score in self.document_scores.items():
-            print(f"  {score:.3f} document {document_id}")
+            score_str = f"{score:.3f}" if score is not None else f"{'n/a':>5}"
+            print(f"  {score_str} document {document_id}")
+
         print()
         print("method scores")
         for method, score in self.method_scores.items():
-            print(f"  {score:.3f} {method}")
+            score_str = f"{score:.3f}" if score is not None else f"{'n/a':>5}"
+            print(f"  {score_str} {method}")
+
         print()
         print("dataset score")
-        print(f"  {self.score:.3f} overall")
+        score_str = f"{self.score:.3f}" if self.score is not None else f"{'n/a':>5}"
+        print(f"  {score_str} overall")
 
     def _write_record(self, record, path: Path) -> None:
         path.write_text(record_to_xml(record), encoding="utf-8")
@@ -236,8 +260,3 @@ class LibraLens:
 
         if invalid_methods:
             raise ValueError(f"unsupported methods: {', '.join(invalid_methods)}")
-
-        for run in self.runs:
-            invalid_fields = [field for field in run.fields if field not in RELEVANT_FIELDS]
-            if invalid_fields:
-                raise ValueError(f"unsupported fields for method '{run.method}': {', '.join(invalid_fields)}")

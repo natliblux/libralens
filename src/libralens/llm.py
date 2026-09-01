@@ -1,6 +1,5 @@
 import os
 from openai import OpenAI
-
 from .constants import LLM_URL_ENV, LLM_MODEL_ENV, LLM_KEY_ENV
 
 class LLM:
@@ -10,7 +9,8 @@ class LLM:
         self.url = os.getenv(LLM_URL_ENV)
         self.model = os.getenv(LLM_MODEL_ENV)
         self.key = os.getenv(LLM_KEY_ENV)
-
+        os.environ["http_proxy"] = ""
+        os.environ["https_proxy"] = ""
         missing = []
 
         if not self.url:
