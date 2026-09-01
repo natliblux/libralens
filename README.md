@@ -532,58 +532,42 @@ If both gold and platinum records are supplied, comparisons are performed agains
 
 ### Document Matching
 
-LibraLens supports individual files as well as directories containing multiple documents.
+When individual files are provided explicitly for eval, gold, platinum, or plain text, their filenames do not need to match. The provided files are considered to belong to the same document. When directories are provided, corresponding eval, gold, platinum, and plain-text data is matched through base filenames. For example:
 
-When individual files are provided explicitly for eval, gold, platinum, or plain text, their filenames do not need to match. The provided files are considered to belong to the same document.
-
-When directories are provided, corresponding data is matched through base filenames:
-
-```text
+```
 eval/
     record0.xml
     record1.xml
-
 gold/
     record0.xml
     record1.xml
-
 platinum/
     record0.xml
     record1.xml
-
 text/
     record0.txt
     record1.txt
 ```
 
-Plain-text files use the same base filename but always use the `.txt` extension.
+Plain-text files use the same base filename but always use the .txt extension. When corresponding .xml files contain multiple records, eval, gold, and platinum records are paired by their order within the file. 
 
-When corresponding XML files contain multiple records, eval, gold, and platinum records are paired according to their order within the file.
+> **Caution:** Record order must be consistent across corresponding eval, gold and platinum files. LibraLens does not verify that records at the same position represent the same bibliographic document. Incorrect ordering may therefore cause records to be evaluated against the wrong gold or platinum standard.
 
-> **Caution:** Record order must be consistent across corresponding eval, gold, and platinum files. LibraLens does not determine whether records at the same position actually represent the same bibliographic document. Incorrect ordering can therefore cause records to be evaluated against the wrong reference.
+For a multi-record `.xml` file, the corresponding plain text is provided through a directory with the same base filename:
 
-For a multi-record XML file, corresponding plain text is provided through a directory with the same base filename:
-
-```text
+```
 eval/
     records.xml
-
 gold/
     records.xml
-
 platinum/
     records.xml
-
 text/
     records/
         00.txt
         01.txt
-        02.txt
 ```
-
-The numbered text files correspond to records by their order in the XML file, starting at `0`.
-
-Leading zeros are optional and do not affect matching. The number of text files must match the number of records.
+The numbered text files correspond to the records by their order within the `.xml` file, starting at `0`. Leading zeros are optional and do not affect matching. The number of text files must match the number of records.
 
 ### LLM Configuration
 
