@@ -22,7 +22,7 @@ LibraLens is designed as a toolbox, allowing different evaluation methods and MA
 - [Usage](#usage)
   - [Python Library](#python-library)
   - [Command Line Interface](#command-line-interface)
-- [Results](#results)
+  - [Results](#results)
 - [Evaluation Methods](#evaluation-methods)
   - [Text Match](#text-match)
   - [Edit Distance](#edit-distance)
@@ -30,9 +30,10 @@ LibraLens is designed as a toolbox, allowing different evaluation methods and MA
   - [Field Validity](#field-validity)
   - [Record Usability](#record-usability)
   - [F1 Score](#f1-score)
-- [Document Matching](#document-matching)
-- [LLM Configuration](#llm-configuration)
-- [Supported MARC Data](#supported-marc-data)
+- [Configuration](#configuration)
+  - [Document Matching](#document-matching)
+  - [LLM Configuration](#llm-configuration)
+  - [MARC Scope](#marc-scope)
 
 ## Installation
 
@@ -203,7 +204,7 @@ Short forms are available for the main command-line options:
 Run `libralens --help` for the complete command-line reference.
 
 
-## Results
+### Results
 
 Every selected method evaluates every document independently.
 
@@ -302,12 +303,12 @@ LibraLens currently provides the following methods:
 
 | Method | Requires | Purpose |
 |---|---|---|
-| [`text-match`](#text-match) | plain text | Matches strings from the eval record with the the underlying document plain text. |
-| [`edit-distance`](#edit-distance) | gold and/or platinum | Compares the eval record to the reference record using edit distance. |
-| [`common-substring`](#common-substring) | gold and/or platinum | Compares the eval record to the reference record using the longest common substring. |
+| [`text-match`](#text-match) | Plain Text | Matches strings from the eval record with the the underlying document plain text. |
+| [`edit-distance`](#edit-distance) | Gold and/or Platinum | Compares the eval record to the reference record using edit distance. |
+| [`common-substring`](#common-substring) | Gold and/or Platinum | Compares the eval record to the reference record using the longest common substring. |
 | [`field-validity`](#field-validity) | — | Checks whether the eval record conforms to known formats and controlled vocabularies. |
-| [`record-usability`](#record-usability) | gold and/or platinum, LLM | Applies binary minimum-quality criteria to determine whether the record is usable. |
-| [`f1-score`](#f1-score) | gold and/or platinum | Computes the f1-score between the eval and reference record for values with unambiguous equality. |
+| [`record-usability`](#record-usability) | Gold and/or Platinum, [LLM](#llm-configuration) | Applies binary minimum-quality criteria to determine whether the record is usable. |
+| [`f1-score`](#f1-score) | Gold and/or Platinum | Computes the f1-score between the eval and reference record for values with unambiguous equality. |
 
 ### Text Match
 
@@ -527,7 +528,9 @@ Only selected fields participate in a comparison. For example, selecting only `7
 
 If both gold and platinum records are supplied, comparisons are performed against both available references and their resulting scores are aggregated.
 
-## Document Matching
+## Configuration
+
+### Document Matching
 
 LibraLens supports individual files as well as directories containing multiple documents.
 
@@ -582,22 +585,17 @@ The numbered text files correspond to records by their order in the XML file, st
 
 Leading zeros are optional and do not affect matching. The number of text files must match the number of records.
 
-## LLM Configuration
+### LLM Configuration
 
-Some evaluation methods use an LLM. Currently, this applies to `record-usability` for semantic title evaluation.
-
-LibraLens supports endpoints exposing an OpenAI-compatible Chat Completions API.
-
-The connection is configured using environment variables:
+Some evaluation methods could require an LLM to run. LibraLens supports endpoints exposing an OpenAI-compatible Chat Completions API. The connection is configured using three environment variables:
 
 | Variable | Required | Description |
 |---|---|---|
-| `LIBRALENS_LLM_URL` | yes | Base URL of the OpenAI-compatible API |
-| `LIBRALENS_LLM_MODEL` | yes | Model identifier |
-| `LIBRALENS_LLM_KEY` | no | API key, if required by the endpoint |
+| `LIBRALENS_LLM_URL` | yes | Base URL |
+| `LIBRALENS_LLM_MODEL` | yes | Model Identifier |
+| `LIBRALENS_LLM_KEY` | no | API Key |
 
 For example:
-
 ```bash
 export LIBRALENS_LLM_URL="https://api.openai.com/v1"
 export LIBRALENS_LLM_MODEL="gpt-5"
@@ -606,30 +604,12 @@ export LIBRALENS_LLM_KEY="..."
 
 The API key can be omitted for endpoints that do not require authentication, such as some locally hosted models.
 
-The semantic title check intentionally uses a simple prompt and simple textual response format so that it can also be used with comparatively small models.
+### MARC Scope
 
-## Supported MARC Data
+LibraLens currently considers the following MARC 21 data:
 
-LibraLens processes a defined subset of MARC 21 fields considered relevant to its current evaluation methods.
+```
+008, 020.a, 041.a, 100, 110, 245, 264, 300, 490, 700, 710
+```
 
-This set acts as a top-level filter for MARC data handled by the library. It also determines which record data is retained when records are written to the output directory.
-
-It is separate from the `supported_fields` of individual evaluation methods. A field being supported by LibraLens does not imply that every method can evaluate it.
-
-The currently relevant MARC data is:
-
-| Field | Relevant subfields |
-|---|---|
-| `008` | Entire control field |
-| `020` | `$a` |
-| `041` | `$a` |
-| `100` | `$a` `$b` `$d` `$0` `$e` `$4` |
-| `110` | `$a` `$b` `$d` `$0` `$e` `$4` |
-| `245` | `$a` `$b` `$c` `$d` |
-| `264` | `$a` `$b` `$c` |
-| `300` | `$a` `$b` |
-| `490` | `$a` |
-| `700` | `$a` `$b` `$d` `$0` `$e` `$4` |
-| `710` | `$a` `$b` `$d` `$0` `$e` `$4` |
-
-User-facing field selectors use dot notation, such as `245.a` or `700.0`. The `$` notation in the table above refers to MARC subfields themselves.
+This set defines the overall MARC data considered by LibraLens and constrains which data is written to disk when using the `--output` option. Each evaluation method supports its own subset, documented in the corresponding method section.
