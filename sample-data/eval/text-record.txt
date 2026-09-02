@@ -1,6 +1,0 @@
-008  260813s2026    lu ||||| |||| 00| 0 eng d
-020 ##$a9789999999991
-100 1#$aHelminger, Guy$eauthor$4aut
-245 10$aPelargonien$bA test record$cGuy Helminger
-264 #1$aLuxembourg$bSample Press$c2026
-300 ##$a123 pages$bcolor illustrations
