@@ -68,7 +68,7 @@ class TextMatchMethod(BaseMethod):
             else:
                 unmatched.append(term_list)
 
-        score = matched_count / total if total else 1.0
+        score = matched_count / total if total else None
 
         return {
             "score": score,
