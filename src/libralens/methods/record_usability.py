@@ -33,8 +33,10 @@ class RecordUsabilityMethod(BaseMethod):
         if company_tags:
             self.check_company_names(doc.eval, reference, company_tags, passed, failed)
 
+        total = len(passed) + len(failed)
+
         return {
-            "score": 1.0 if not failed else 0.0,
+            "score": (1.0 if not failed else 0.0) if total else None,
             "info": {
                 "passed": passed,
                 "failed": failed
