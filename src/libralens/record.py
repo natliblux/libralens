@@ -28,7 +28,8 @@ class Record:
         self.sub_title = None
         self.contributors = None
         self.parallel_title = None
-        self.isbn = None
+        self.isbn_raw = None
+        self.isbn_normalized = None
         self.isbn_variants = []
         self.lang_codes = []
         self.locations = []
@@ -60,9 +61,9 @@ class Record:
             if tag == "008":
                 self.zerozeroeight = field["value"]
             if tag == "020":
-                isbn_raw = next((s["value"] for s in field["subfields"] if s["code"] == "a"), None)
-                self.isbn = self.normalize_isbn(isbn_raw)
-                self.isbn_variants = self.get_isbn_variants(isbn_raw)
+                self.isbn_raw = next((s["value"] for s in field["subfields"] if s["code"] == "a"), None)
+                self.isbn_normalized = self.normalize_isbn(self.isbn_raw)
+                self.isbn_variants = self.get_isbn_variants(self.isbn_raw)
 
             if tag == "041":
                 self.lang_codes = [s["value"] for s in field["subfields"] if s["code"] == "a"]
