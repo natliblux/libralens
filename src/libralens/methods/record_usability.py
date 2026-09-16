@@ -91,13 +91,13 @@ class RecordUsabilityMethod(BaseMethod):
 
         result = {
             "criterion": "isbn-match",
-            "eval": record.isbn,
-            "reference": reference.isbn
+            "eval": record.isbn_normalized,
+            "reference": reference.isbn_normalized
         }
 
-        if reference.isbn is None:
+        if reference.isbn_normalized is None:
             passed.append(result)
-        elif record.isbn == reference.isbn:
+        elif record.isbn_normalized == reference.isbn_normalized:
             passed.append(result)
         else:
             failed.append(result)

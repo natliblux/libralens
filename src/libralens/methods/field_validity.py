@@ -48,16 +48,16 @@ class FieldValidityMethod(BaseMethod):
 
     def check_isbn(self, record, valid, invalid) -> None:
 
-        if record.isbn is None:
+        if record.isbn_normalized is None:
             return
 
         result = {
             "field": "020",
             "part": "$a",
-            "value": record.isbn,
+            "value": record.isbn_normalized,
         }
 
-        if self.is_valid_isbn(record.isbn):
+        if self.is_valid_isbn(record.isbn_normalized):
             valid.append(result)
         else:
             invalid.append(result)
