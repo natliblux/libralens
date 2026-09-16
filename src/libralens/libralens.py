@@ -6,6 +6,7 @@ import json
 from .methods import METHODS
 from .loader import load_documents
 from .llm import LLM
+from .plot import create_results_plot
 
 class LibraLens:
 
@@ -205,9 +206,11 @@ class LibraLens:
         with results_file.open("w", encoding="utf-8") as file:
             json.dump(self.results, file, indent=4, ensure_ascii=False)
 
-        width = len(str(len(self.documents) - 1))
+        # plot
+        create_results_plot(results=self.results, methods=self.methods, overall_score=self.score, output_path=self.output / "results.png")
 
         # document data
+        width = len(str(len(self.documents) - 1))
         for i, document in enumerate(self.documents):
 
             document_dir = documents_dir / f"{i:0{width}d}"
@@ -217,10 +220,8 @@ class LibraLens:
 
             if document.gold is not None:
                 self._write_record(document.gold, document_dir / "gold.xml")
-
             if document.platinum is not None:
                 self._write_record(document.platinum, document_dir / "platinum.xml")
-
             if document.text is not None:
                 (document_dir / "text.txt").write_text(document.text, encoding="utf-8")
 
