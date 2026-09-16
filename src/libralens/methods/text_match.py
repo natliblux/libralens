@@ -19,61 +19,133 @@ class TextMatchMethod(BaseMethod):
 
         terms = []
 
+        # isbn
         if "020" in fields and "a" in fields["020"]:
-            terms.append(doc.eval.isbn_variants)
+            terms.append({
+                "field": "020",
+                "subfields": ["a"],
+                "value": doc.eval.isbn_raw,
+                "variants": doc.eval.isbn_variants,
+            })
 
+        # title
         if "245" in fields:
             if "a" in fields["245"]:
-                terms.append([doc.eval.title_clean])
-            if "b" in fields["245"]:
-                terms.append([doc.eval.sub_title_clean])
-            if "d" in fields["245"]:
-                terms.append([doc.eval.parallel_title_clean])
+                terms.append({
+                    "field": "245",
+                    "subfields": ["a"],
+                    "value": doc.eval.title,
+                    "variants": [doc.eval.title_clean],
+                })
 
+            if "b" in fields["245"]:
+                terms.append({
+                    "field": "245",
+                    "subfields": ["b"],
+                    "value": doc.eval.sub_title,
+                    "variants": [doc.eval.sub_title_clean],
+                })
+
+            if "d" in fields["245"]:
+                terms.append({
+                    "field": "245",
+                    "subfields": ["d"],
+                    "value": doc.eval.parallel_title,
+                    "variants": [doc.eval.parallel_title_clean],
+                })
+
+        # publication
         if "264" in fields:
             if "a" in fields["264"]:
-                terms.append(doc.eval.locations_confident)
-            if "b" in fields["264"]:
-                terms.append(doc.eval.publishers)
-            if "c" in fields["264"]:
-                terms.append(doc.eval.years_confident)
+                for location in doc.eval.locations_confident:
+                    terms.append({
+                        "field": "264",
+                        "subfields": ["a"],
+                        "value": location,
+                        "variants": [location],
+                    })
 
+            if "b" in fields["264"]:
+                for publisher in doc.eval.publishers:
+                    terms.append({
+                        "field": "264",
+                        "subfields": ["b"],
+                        "value": publisher,
+                        "variants": [publisher],
+                    })
+
+            if "c" in fields["264"]:
+                for year in doc.eval.years_confident:
+                    terms.append({
+                        "field": "264",
+                        "subfields": ["c"],
+                        "value": year,
+                        "variants": [year],
+                    })
+
+        # person names
         for tag in {"100", "700"} & fields.keys():
             if fields[tag] & {"a", "b"}:
-                terms.extend(doc.eval.people_name_variants[tag])
+                for name, variants in zip(doc.eval.people_names[tag], doc.eval.people_name_variants[tag]):
+                    terms.append({
+                        "field": tag,
+                        "subfields": sorted(fields[tag] & {"a", "b"}),
+                        "value": name,
+                        "variants": variants,
+                    })
 
+        # corporate names
         for tag in {"110", "710"} & fields.keys():
             if fields[tag] & {"a", "b"}:
-                terms.extend([[name] for name in doc.eval.company_names[tag]])
+                for name in doc.eval.company_names[tag]:
+                    terms.append({
+                        "field": tag,
+                        "subfields": sorted(fields[tag] & {"a", "b"}),
+                        "value": name,
+                        "variants": [name],
+                    })
 
-        matched_terms = []
+        matched = []
         unmatched = []
         total = 0
         matched_count = 0
 
-        for term_list in terms:
-            term_list = [term for term in term_list if term is not None]
+        for term in terms:
 
-            if not term_list:
+            variants = [variant for variant in term["variants"] if variant is not None]
+            if not variants:
                 continue
 
             total += 1
 
-            normalized = [normalize_text(term) for term in term_list]
-            matched = [term in doc.text_normalized for term in normalized]
+            matched_variant = next(
+                (
+                    variant
+                    for variant in variants
+                    if normalize_text(variant) in doc.text_normalized
+                ),
+                None,
+            )
 
-            if any(matched):
+            result = {
+                "field": term["field"],
+                "subfields": term["subfields"],
+                "value": term["value"],
+            }
+
+            if matched_variant is not None:
                 matched_count += 1
-                matched_terms.append(term_list)
+                result["matched_variant"] = matched_variant
+                matched.append(result)
             else:
-                unmatched.append(term_list)
+                unmatched.append(result)
 
         score = matched_count / total if total else None
 
         return {
             "score": score,
             "info": {
-                "matched": matched_terms,
-                "unmatched": unmatched
-            }
+                "matched": matched,
+                "unmatched": unmatched,
+            },
         }
