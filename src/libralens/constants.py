@@ -23,6 +23,8 @@ LLM_KEY_ENV = "LIBRALENS_LLM_KEY"
 MARC_LANGUAGE_CODES = load_codes("language_codes.json")
 MARC_RELATOR_CODES = load_codes("relator_codes.json")
 
+PLOT_RESOLUTION = 20
+
 TITLE_SEMANTICS_SYSTEM_PROMPT = """
 Identify semantically important words or concepts that are present in one title but missing from another.
 
