@@ -116,12 +116,7 @@ def _create_distribution_heatmap(results: list[dict], methods: list[str], overal
     ax.set_xticks(range(len(methods)))
     ax.set_xticklabels(methods, rotation=30, ha="right")
 
-    labels = []
-
-    for i in reversed(range(PLOT_RESOLUTION)):
-        lower = bin_edges[i]
-        upper = bin_edges[i + 1]
-        labels.append(f"{lower:.2f}–{upper:.2f}")
+    labels = [f"{bin_edges[i]:.2f}+" for i in reversed(range(PLOT_RESOLUTION))]
 
     ax.set_yticks(range(PLOT_RESOLUTION))
     ax.set_yticklabels(labels)
