@@ -14,6 +14,7 @@ dependencies = [
     "scipy==1.18.1",
     "tqdm==4.70.0",
     "matplotlib==3.11.2",
+    "PyMuPDF==1.24.11",
 ]
 
 [project.scripts]
