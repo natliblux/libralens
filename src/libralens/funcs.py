@@ -3,6 +3,20 @@ import re
 import unicodedata
 import json
 from importlib.resources import files
+import fitz
+from pathlib import Path
+
+def extract_pdf_text(pdf_path: str | Path) -> str:
+
+    with fitz.open(pdf_path) as doc:
+        text = "\n\n".join(page.get_text("text") for page in doc)
+    text = re.sub(r"(\w)-\n(\w)", r"\1\2", text)
+    text = re.sub(r"(?<!\n)\n(?!\n)", " ", text)
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n\s*\n", "\n\n", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    text = re.sub(r"\n +", "\n", text)
+    return text.strip()
 
 def load_codes(filename: str) -> set[str]:
 

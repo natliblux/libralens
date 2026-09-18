@@ -1,10 +1,30 @@
 from pathlib import Path
+import re
 import xml.etree.ElementTree as ET
-
+import fitz
 from .record import Record
 from .document import Document
 from .funcs import remove_namespaces
 from .enums import InputFormat
+
+def load_document_text(path: Path) -> str:
+
+    if path.suffix.lower() == ".txt":
+        return path.read_text(encoding="utf-8")
+
+    if path.suffix.lower() == ".pdf":
+        with fitz.open(path) as doc:
+            text = "\n\n".join(page.get_text("text") for page in doc)
+        text = re.sub(r"(\w)-\n(\w)", r"\1\2", text)
+        text = re.sub(r"(?<!\n)\n(?!\n)", " ", text)
+        text = re.sub(r"[ \t]+", " ", text)
+        text = re.sub(r"\n\s*\n", "\n\n", text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        text = re.sub(r"\n +", "\n", text)
+        text = text.strip()
+        return text
+
+    raise ValueError(f"unsupported document text file type: {path}")
 
 def load_records(path: str | Path) -> list[Record]:
 
@@ -147,13 +167,16 @@ def pair_files(
 def get_matching_text_source(eval_file: Path, text_path: Path) -> Path:
 
     text_file = text_path / f"{eval_file.stem}.txt"
+    pdf_file = text_path / f"{eval_file.stem}.pdf"
     text_dir = text_path / eval_file.stem
 
-    if text_file.exists():
-        return text_file
+    matches = [path for path in [text_file, pdf_file, text_dir] if path.exists()]
 
-    if text_dir.exists() and text_dir.is_dir():
-        return text_dir
+    if len(matches) > 1:
+        raise ValueError(f"multiple matching text sources found for: {eval_file.name}")
+
+    if matches:
+        return matches[0]
 
     raise ValueError(f"no matching text found for: {eval_file.name}")
 
@@ -162,12 +185,12 @@ def load_texts(text_source: Path, n_records: int) -> list[str]:
     if text_source.is_file():
         if n_records != 1:
             raise ValueError(f"{text_source.name} cannot be matched to {n_records} records")
-        return [text_source.read_text(encoding="utf-8")]
+        return [load_document_text(text_source)]
 
     if not text_source.is_dir():
         raise ValueError(f"text path does not exist: {text_source}")
 
-    files = [file for file in text_source.glob("*.txt") if file.stem.isdigit()]
+    files = [file for file in text_source.iterdir() if file.suffix.lower() in {".txt", ".pdf"} and file.stem.isdigit()]
     indices = [int(file.stem) for file in files]
 
     if len(indices) != len(set(indices)):
@@ -183,4 +206,4 @@ def load_texts(text_source: Path, n_records: int) -> list[str]:
     if len(files) != n_records:
         raise ValueError(f"text count mismatch for {text_source.name}: {n_records} records, {len(files)} text files")
 
-    return [file.read_text(encoding="utf-8") for file in files]
+    return [load_document_text(file) for file in files]

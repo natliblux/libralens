@@ -63,7 +63,7 @@ The basic unit evaluated by LibraLens is a document. A document can contain:
 - a **platinum** reference record
 - the plain **text** of the underlying PDF
 
-Records can be provided as individual files or directories containing multiple files. LibraLens supports `.xml` and `.txt` formats. XML files may contain one or multiple records, while text files contain a single record. Corresponding eval, reference, and plain-text data is matched as described in [Document Matching](#document-matching).
+Records can be provided as individual files or directories containing multiple files. LibraLens supports `.xml` and `.txt` formats for MARC records. Plain text can be provided as a `.txt` (text is read directly) or `.pdf` (LibraLens PDF text extraction) file. XML files may contain one or multiple records, while text files contain a single record. Corresponding eval, reference, and plain-text data is matched as described in [Document Matching](#document-matching).
 
 The selected evaluation **methods** define what the documents require. For example, `text-match` requires plain text, while comparison methods such as `edit-distance` require a gold or platinum reference record.
 
@@ -553,10 +553,9 @@ platinum/
     record1.xml
 text/
     record0.txt
-    record1.txt
+    record1.pdf
 ```
-
-Plain-text files use the same base filename but always use the `.txt` extension. When corresponding `.xml` files contain multiple records, eval, gold, and platinum records are paired by their order within the file. 
+Plain text files use the same base filename as the corresponding record and may use either the `.txt` (text is read directly) or `.pdf` (LibraLens PDF text extraction) extension. When corresponding `.xml` files contain multiple records, eval, gold, and platinum records are paired by their order within the file. 
 
 > **Caution:** Record order must be consistent across corresponding eval, gold and platinum files. LibraLens does not verify that records at the same position represent the same bibliographic document. Incorrect ordering may therefore cause records to be evaluated against the wrong gold or platinum standard.
 
@@ -572,9 +571,9 @@ platinum/
 text/
     records/
         00.txt
-        01.txt
+        01.pdf
 ```
-The numbered text files correspond to the records by their order within the `.xml` file, starting at `0`. Leading zeros are optional and do not affect matching. The number of text files must match the number of records.
+The numbered plain text files correspond to the records by their order within the `.xml` file, starting at `0`. Leading zeros are optional and do not affect matching. The number of text sources must match the number of records.
 
 ### LLM Configuration
 
