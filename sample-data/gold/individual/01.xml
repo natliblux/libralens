@@ -1,0 +1,74 @@
+<?xml version='1.0' encoding='utf-8'?>
+<record>
+    <leader>02591nam a2200325Mc 4500</leader>
+    <controlfield tag="001">9924504606107251</controlfield>
+    <controlfield tag="005">20260812115056.0</controlfield>
+    <controlfield tag="007">cr############</controlfield>
+    <controlfield tag="008">250515s2022    lu a    o     00| | fre  </controlfield>
+    <datafield tag="024" ind1="7" ind2=" ">
+        <subfield code="a">ark:70795/75p1276fb1</subfield>
+        <subfield code="2">ark</subfield>
+    </datafield>
+    <datafield tag="040" ind1=" " ind2=" ">
+        <subfield code="a">LUX BINA</subfield>
+        <subfield code="e">rda</subfield>
+    </datafield>
+    <datafield tag="072" ind1=" " ind2="7">
+        <subfield code="a">me</subfield>
+        <subfield code="2">LUX</subfield>
+    </datafield>
+    <datafield tag="110" ind1="2" ind2=" ">
+        <subfield code="a">Conseil Scientifique (Luxembourg)</subfield>
+        <subfield code="0">(LUBIBNET)000055762</subfield>
+        <subfield code="e">organisme de publication</subfield>
+        <subfield code="4">isb</subfield>
+    </datafield>
+    <datafield tag="245" ind1="1" ind2="0">
+        <subfield code="a">Approche clinique et rôle de l'imagerie médicale dans les céphalées aiguës et chroniques non-traumatiques</subfield>
+        <subfield code="b">arbre décisionnel</subfield>
+        <subfield code="b">2022</subfield>
+        <subfield code="c">[éd.:] Conseil scientifique - Domaine de la Santé ; [réd.: Angelina Ganieva]</subfield>
+    </datafield>
+    <datafield tag="264" ind1=" " ind2="1">
+        <subfield code="a">[Luxembourg]</subfield>
+        <subfield code="b">Conseil scientifique</subfield>
+        <subfield code="c">2022</subfield>
+    </datafield>
+    <datafield tag="300" ind1=" " ind2=" ">
+        <subfield code="a">4 p.</subfield>
+        <subfield code="b">ill.</subfield>
+    </datafield>
+    <datafield tag="336" ind1=" " ind2=" ">
+        <subfield code="a">texte</subfield>
+        <subfield code="b">txt</subfield>
+        <subfield code="2">rdacontent</subfield>
+    </datafield>
+    <datafield tag="337" ind1=" " ind2=" ">
+        <subfield code="a">sans médiation</subfield>
+        <subfield code="b">n</subfield>
+        <subfield code="2">rdamedia</subfield>
+    </datafield>
+    <datafield tag="338" ind1=" " ind2=" ">
+        <subfield code="a">volume</subfield>
+        <subfield code="b">nc</subfield>
+        <subfield code="2">rdacarrier</subfield>
+    </datafield>
+    <datafield tag="588" ind1=" " ind2=" ">
+        <subfield code="a">généré par AutoCat v1.2.2</subfield>
+    </datafield>
+    <datafield tag="700" ind1=" " ind2=" ">
+        <subfield code="a">Ganieva, Angelina</subfield>
+        <subfield code="e">auteur</subfield>
+        <subfield code="4">aut</subfield>
+    </datafield>
+    <datafield tag="907" ind1=" " ind2=" ">
+        <subfield code="a">CF Elektron. Daten Fernzugriff=Fichier online</subfield>
+        <subfield code="2">bibnet_aspect_secondaire</subfield>
+    </datafield>
+    <datafield tag="920" ind1=" " ind2=" ">
+        <subfield code="a">bnl-uc</subfield>
+    </datafield>
+    <datafield tag="924" ind1=" " ind2=" ">
+        <subfield code="a">610</subfield>
+    </datafield>
+</record>

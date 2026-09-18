@@ -1,0 +1,87 @@
+<?xml version='1.0' encoding='utf-8'?>
+<record>
+    <leader>03484nam a2200493Mc 4500</leader>
+    <controlfield tag="001">9924504708807251</controlfield>
+    <controlfield tag="005">20260812123401.0</controlfield>
+    <controlfield tag="007">cr############</controlfield>
+    <controlfield tag="008">250515s2023    lu a    o     00| | ger  </controlfield>
+    <datafield tag="020" ind1=" " ind2=" ">
+        <subfield code="a">978-2-919877-17-1</subfield>
+    </datafield>
+    <datafield tag="024" ind1="7" ind2=" ">
+        <subfield code="a">ark:70795/6bzk5vgpr9</subfield>
+        <subfield code="2">ark</subfield>
+    </datafield>
+    <datafield tag="040" ind1=" " ind2=" ">
+        <subfield code="a">LUX BINA</subfield>
+        <subfield code="e">rda</subfield>
+    </datafield>
+    <datafield tag="072" ind1=" " ind2="7">
+        <subfield code="a">zo</subfield>
+        <subfield code="2">LUX</subfield>
+    </datafield>
+    <datafield tag="110" ind1="2" ind2=" ">
+        <subfield code="a">Luxembourg</subfield>
+        <subfield code="b">Administration de la nature et des forêts</subfield>
+        <subfield code="0">(LUBIBNET)000044270</subfield>
+        <subfield code="e">organisme de publication</subfield>
+        <subfield code="4">isb</subfield>
+    </datafield>
+    <datafield tag="245" ind1="1" ind2="0">
+        <subfield code="a">Wilde Katzen in Luxemburg</subfield>
+        <subfield code="c">[Hrsg.: Naturverwaltung (ANF), Nationalmuseum für Naturgeschichte (MNHNL)]</subfield>
+    </datafield>
+    <datafield tag="250" ind1=" " ind2=" ">
+        <subfield code="a">3. Auflage</subfield>
+    </datafield>
+    <datafield tag="264" ind1=" " ind2="1">
+        <subfield code="a">Luxemburg</subfield>
+        <subfield code="b">MNHNL</subfield>
+        <subfield code="c">2023</subfield>
+    </datafield>
+    <datafield tag="264" ind1=" " ind2="3">
+        <subfield code="a">[Troisvierges]</subfield>
+        <subfield code="b">Exepro</subfield>
+    </datafield>
+    <datafield tag="300" ind1=" " ind2=" ">
+        <subfield code="a">59 p.</subfield>
+        <subfield code="b">ill.</subfield>
+    </datafield>
+    <datafield tag="336" ind1=" " ind2=" ">
+        <subfield code="a">texte</subfield>
+        <subfield code="b">txt</subfield>
+        <subfield code="2">rdacontent</subfield>
+    </datafield>
+    <datafield tag="337" ind1=" " ind2=" ">
+        <subfield code="a">sans médiation</subfield>
+        <subfield code="b">n</subfield>
+        <subfield code="2">rdamedia</subfield>
+    </datafield>
+    <datafield tag="338" ind1=" " ind2=" ">
+        <subfield code="a">volume</subfield>
+        <subfield code="b">nc</subfield>
+        <subfield code="2">rdacarrier</subfield>
+    </datafield>
+    <datafield tag="588" ind1=" " ind2=" ">
+        <subfield code="a">généré par AutoCat v1.2.2</subfield>
+    </datafield>
+    <datafield tag="710" ind1="2" ind2=" ">
+        <subfield code="a">Musée national d'histoire naturelle (Luxembourg)</subfield>
+        <subfield code="0">(LUBIBNET)000013113</subfield>
+        <subfield code="e">organisme de publication</subfield>
+        <subfield code="4">isb</subfield>
+    </datafield>
+    <datafield tag="907" ind1=" " ind2=" ">
+        <subfield code="a">CF Elektron. Daten Fernzugriff=Fichier online</subfield>
+        <subfield code="2">bibnet_aspect_secondaire</subfield>
+    </datafield>
+    <datafield tag="920" ind1=" " ind2=" ">
+        <subfield code="a">bnl-uc</subfield>
+    </datafield>
+    <datafield tag="924" ind1=" " ind2=" ">
+        <subfield code="a">590</subfield>
+    </datafield>
+    <datafield tag="941" ind1=" " ind2=" ">
+        <subfield code="a">VIAFEXPORT</subfield>
+    </datafield>
+</record>
