@@ -79,19 +79,19 @@ class FieldValidityMethod(BaseMethod):
 
     def check_008(self, record, valid, invalid) -> None:
 
-        if record.zerozeroeight is None:
+        if record.zero_zero_eight is None:
             return
 
-        if len(record.zerozeroeight) < 38:
+        if len(record.zero_zero_eight) < 38:
             invalid.append({
                 "field": "008",
                 "part": "length",
-                "value": record.zerozeroeight,
-                "reason": f"expected at least 38 characters, found {len(record.zerozeroeight)}",
+                "value": record.zero_zero_eight,
+                "reason": f"expected at least 38 characters, found {len(record.zero_zero_eight)}",
             })
             return
 
-        date = record.zerozeroeight[0:6]
+        date = record.zero_zero_eight[0:6]
 
         date_result = {
             "field": "008",
@@ -104,7 +104,7 @@ class FieldValidityMethod(BaseMethod):
         else:
             invalid.append(date_result)
 
-        language = record.zerozeroeight[35:38]
+        language = record.zero_zero_eight[35:38]
 
         language_result = {
             "field": "008",

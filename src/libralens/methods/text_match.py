@@ -5,7 +5,8 @@ class TextMatchMethod(BaseMethod):
 
     name = "text-match"
     supported_fields = {
-        "020": ("a",),
+        "020": ("a"),
+        "094": ("a"),
         "100": ("a", "b"),
         "110": ("a", "b"),
         "245": ("a", "b", "d"),
@@ -26,6 +27,15 @@ class TextMatchMethod(BaseMethod):
                 "subfields": ["a"],
                 "value": doc.eval.isbn_raw,
                 "variants": doc.eval.isbn_variants,
+            })
+
+        # 094
+        if "094" in fields and "a" in fields["094"]:
+            terms.append({
+                "field": "094",
+                "subfields": ["a"],
+                "value": doc.eval.zero_ninety_four,
+                "variants": [doc.eval.zero_ninety_four_clean],
             })
 
         # title

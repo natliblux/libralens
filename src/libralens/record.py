@@ -23,11 +23,12 @@ class Record:
 
     def parse_fields(self) -> None:
 
-        self.zerozeroeight = None
+        self.zero_zero_eight = None
         self.title = None
         self.sub_title = None
         self.contributors = None
         self.parallel_title = None
+        self.zero_ninety_four = None
         self.isbn_raw = None
         self.isbn_normalized = None
         self.isbn_variants = []
@@ -59,14 +60,15 @@ class Record:
         for field in self.fields:
             tag = field["tag"]
             if tag == "008":
-                self.zerozeroeight = field["value"]
-            if tag == "020":
+                self.zero_zero_eight = field["value"]
+            elif tag == "020":
                 self.isbn_raw = next((s["value"] for s in field["subfields"] if s["code"] == "a"), None)
                 self.isbn_normalized = self.normalize_isbn(self.isbn_raw)
                 self.isbn_variants = self.get_isbn_variants(self.isbn_raw)
-
-            if tag == "041":
+            elif tag == "041":
                 self.lang_codes = [s["value"] for s in field["subfields"] if s["code"] == "a"]
+            elif tag == "094":
+                self.zero_ninety_four = next((s["value"] for s in field["subfields"] if s["code"] == "a"), None)
             elif tag == "245":
                 self.title = next((s["value"] for s in field["subfields"] if s["code"] == "a"), None)
                 self.sub_title = next((s["value"] for s in field["subfields"] if s["code"] == "b"), None)
@@ -104,6 +106,7 @@ class Record:
                 if authority:
                     self.authorities[tag].append(authority)
 
+        self.zero_ninety_four_clean = remove_angle_brackets(self.zero_ninety_four)
         self.title_clean = remove_angle_brackets(self.title)
         self.sub_title_clean = remove_angle_brackets(self.sub_title)
         self.parallel_title_clean = remove_angle_brackets(self.parallel_title)
