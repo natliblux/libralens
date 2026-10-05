@@ -11,7 +11,7 @@ class ComparisonMethod(BaseMethod):
         "110": ("a", "b"),
         "245": ("a", "b", "c", "d"),
         "700": ("a", "b"),
-        "710": ("a", "b"),
+        "710": ("a", "b")
     }
 
     requires_gold_or_platinum = True
