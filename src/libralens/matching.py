@@ -1,15 +1,15 @@
 from scipy.optimize import linear_sum_assignment
 from Levenshtein import ratio
 from .funcs import normalize_text, join_subfields
-
-PERSON_TAGS = {"100", "700"}
-COMPANY_TAGS = {"110", "710"}
+from .constants import MAPPED_FIELD_GROUPS
 
 def create_mapping(eval_record, reference_record) -> dict[int, int]:
 
     mapping = {}
-    mapping.update(map_field_group(eval_record, reference_record, PERSON_TAGS))
-    mapping.update(map_field_group(eval_record, reference_record, COMPANY_TAGS))
+
+    for tags in MAPPED_FIELD_GROUPS:
+        mapping.update(map_field_group(eval_record, reference_record, tags))
+
     return mapping
 
 def map_field_group(eval_record, reference_record, tags: set[str]) -> dict[int, int]:
