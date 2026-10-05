@@ -142,7 +142,7 @@ class LibraLens:
         values = []
 
         for field, subfields in fields.items():
-            if subfields is None:
+            if not subfields:
                 values.append(field)
             else:
                 values.extend(f"{field}.{subfield}" for subfield in sorted(subfields))
