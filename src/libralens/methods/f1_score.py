@@ -8,7 +8,7 @@ class F1ScoreMethod(BaseMethod):
         "100": ("0", "4"),
         "110": ("0", "4"),
         "700": ("0", "4"),
-        "710": ("0", "4"),
+        "710": ("0", "4")
     }
     requires_gold_or_platinum = True
 
