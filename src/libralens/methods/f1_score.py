@@ -4,7 +4,7 @@ class F1ScoreMethod(BaseMethod):
 
     name = "f1-score"
     supported_fields = {
-        "041": ("a"),
+        "041": ("a",),
         "100": ("0", "4"),
         "110": ("0", "4"),
         "700": ("0", "4"),

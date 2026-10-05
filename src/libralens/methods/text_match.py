@@ -5,8 +5,8 @@ class TextMatchMethod(BaseMethod):
 
     name = "text-match"
     supported_fields = {
-        "020": ("a"),
-        "094": ("a"),
+        "020": ("a",),
+        "094": ("a",),
         "100": ("a", "b"),
         "110": ("a", "b"),
         "245": ("a", "b", "d"),

@@ -6,9 +6,9 @@ class RecordUsabilityMethod(BaseMethod):
     name = "record-usability"
 
     supported_fields = {
-        "020": ("a"),
+        "020": ("a",),
         "110": ("a", "b"),
-        "245": ("a"),
+        "245": ("a",),
         "710": ("a", "b")
     }
 

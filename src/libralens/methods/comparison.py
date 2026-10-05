@@ -6,7 +6,7 @@ from ..funcs import join_subfields
 class ComparisonMethod(BaseMethod):
 
     supported_fields = {
-        "094": ("a"),
+        "094": ("a",),
         "100": ("a", "b"),
         "110": ("a", "b"),
         "245": ("a", "b", "c", "d"),
