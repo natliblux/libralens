@@ -8,13 +8,13 @@ class FieldValidityMethod(BaseMethod):
     name = "field-validity"
 
     supported_fields = {
-        "008": None,
-        "020": ("a",),
-        "041": ("a",),
-        "100": ("4",),
-        "110": ("4",),
-        "700": ("4",),
-        "710": ("4",),
+        "008": (),
+        "020": ("a"),
+        "041": ("a"),
+        "100": ("4"),
+        "110": ("4"),
+        "700": ("4"),
+        "710": ("4")
     }
 
     def run_doc(self, doc, fields, llm=None):
