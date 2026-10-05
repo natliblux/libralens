@@ -12,7 +12,7 @@ class TextMatchMethod(BaseMethod):
         "245": ("a", "b", "d"),
         "264": ("a", "b", "c"),
         "700": ("a", "b"),
-        "710": ("a", "b"),
+        "710": ("a", "b")
     }
     requires_text = True
 
