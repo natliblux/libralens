@@ -4,6 +4,7 @@ from .common_substring import CommonSubstringMethod
 from .field_validity import FieldValidityMethod
 from .record_usability import RecordUsabilityMethod
 from .f1_score import F1ScoreMethod
+from .subfield_cardinality import SubfieldCardinality
 
 METHOD_CLASSES = [
     TextMatchMethod,
@@ -11,7 +12,8 @@ METHOD_CLASSES = [
     CommonSubstringMethod,
     FieldValidityMethod,
     RecordUsabilityMethod,
-	F1ScoreMethod
+	F1ScoreMethod,
+	SubfieldCardinality
 ]
 
 METHODS = {
