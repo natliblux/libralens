@@ -510,22 +510,11 @@ If both gold and platinum records are supplied, comparisons are performed agains
 
 `subfield-cardinality` evaluates whether the eval record contains the same amount of selected MARC data as a gold or platinum reference record.
 
-The method operates on the subfield level (except for controlfields) and considers only cardinality: the actual content of a value does not affect the score. For example, if both records contain exactly one `245.a`, its cardinality score is `1.0` even if the two title strings are completely different. String correctness can instead be evaluated using other methods. For each cardinality comparison, the score is calculated as:
-
-```text
-if eval count = reference count:
-    score = 1.0
-otherwise:
-    score = min(eval count, reference count) / max(eval count, reference count)
-```
-
-In particular, `0` versus `0` is a valid comparison with a score of `1.0` (the absence of a subfield can be desired).
+The method operates on the subfield level (except for controlfields) and considers only cardinality. For example, if both records contain exactly one `245.a`, the score equals `1.0` (subfield abscence can be desired). In general, the score is computed as the ratio between the smaller and larger count. If both counts are `0`, the score is `1.0`. The actual content of the values does not affect the score and can instead be evaluated using other methods. 
 
 #### Standard fields
 
-For fields other than (`100`, `110`, `700`, `710`), occurrences of each selected subfield are counted globally in the eval and reference records.
-
-For example:
+For fields other than `100`, `110`, `700` and `710`, occurrences of each selected subfield are counted globally in the eval and reference records, for example:
 
 ```text
 Eval:
@@ -546,7 +535,7 @@ score = 0.5
 
 #### Mapped fields
 
-Person fields `100` and `700` are treated as one group, same as the corporate fields `110` and `710`. Subfield occurrences are mapped between the eval and reference groups according to the person or corporate entity they represent (i.e. a mapping may cross MARC tags within the group). Cardinality is then evaluated **within each mapped pair**.
+Person fields `100/700` are treated as one group, same as the corporate fields `110/710`. Field occurrences are mapped between the eval and reference groups based on their names (i.e. a mapping may cross MARC tags within the group). Cardinality is then evaluated **within each mapped pair**.
 
 For example:
 
@@ -579,9 +568,9 @@ Reference:
 700 $a Alice
 ```
 
-produces `0` versus `0` for `700.0`, with a score of `1.0`.
+produces `0` versus `0` for subfield `.0`, with a score of `1.0`.
 
-Unmatched person/corporate fields are also considered, **but only when the unmatched field actually contains the selected subfield**. For example, for `.0` the Bob fields contributes a score of `1.0`.
+Unmatched person/corporate fields are also considered, but **only when the unmatched field contains the selected subfield**, regardless of whether it occurs in the eval or reference record. For example, for `.0` the Bob field contributes a score of `0.0`:
 
 ```text
 Eval:
@@ -592,20 +581,14 @@ Reference:
 700 $a Alice
 ```
 
-The same rule applies in the opposite direction: an unmatched field contributes to a selected subfield only if the reference field contains the subfield.
-
-If there are no fields on either side for the person/corporate group, cardinality is still considered correct (0 vs 0) with a score of `1.0`. 
+If there are no fields at all on either side for a person/corporate group, cardinality is still considered as correct (0 vs 0) with a score of `1.0`. 
 
 #### Aggregation
 
-For standard fields, there is single cardinality comparison producing the final score for the subfield.
-
-For mapped fields, a selected subfield can produce multiple comparisons: one for every mapped occurrence and, where applicable, additional comparisons for unmatched occurrences. The subfield score is the mean of these comparison scores.
-
-The final methods score equals:
+For standard fields, there is a single cardinality comparison producing the final score for the subfield. For mapped fields, a selected subfield can produce multiple comparisons: one for every mapped occurrence and, where applicable, additional comparisons for unmatched occurrences. The subfield score is the mean of these comparison scores:
 
 ```text
-sum of subfield scores / number of selected subfield comparisons
+sum of subfield scores / number of subfields
 ```
 
 **Requires:** gold or platinum
