@@ -6,10 +6,10 @@ from ..funcs import join_subfields
 class ComparisonMethod(BaseMethod):
 
     supported_fields = {
-        "094": ("a",),
         "100": ("a", "b"),
         "110": ("a", "b"),
         "245": ("a", "b", "c", "d"),
+        "490": ("a",),
         "700": ("a", "b"),
         "710": ("a", "b")
     }
@@ -49,11 +49,11 @@ class ComparisonMethod(BaseMethod):
                 comparisons
             )
 
-        if "094" in fields:
-            self.compare_094(eval_record, reference_record, fields["094"], comparisons)
-
         if "245" in fields:
             self.compare_245(eval_record, reference_record, fields["245"], comparisons)
+
+        if "490" in fields:
+            self.compare_490(eval_record, reference_record, fields["490"], comparisons)
 
         scores = [comparison["score"] for comparison in comparisons]
 
@@ -91,13 +91,13 @@ class ComparisonMethod(BaseMethod):
                 "score": self.compare_strings(eval_text, reference_text),
             })
 
-    def compare_094(self, eval_record, reference_record, sub_fields, comparisons) -> None:
+    def compare_490(self, eval_record, reference_record, sub_fields, comparisons) -> None:
 
         if "a" not in sub_fields:
             return
 
-        eval_field = self.get_field(eval_record, "094")
-        reference_field = self.get_field(reference_record, "094")
+        eval_field = self.get_field(eval_record, "490")
+        reference_field = self.get_field(reference_record, "490")
 
         if eval_field is None or reference_field is None:
             return
@@ -109,8 +109,8 @@ class ComparisonMethod(BaseMethod):
             return
 
         comparisons.append({
-            "eval_field": "094",
-            "reference_field": "094",
+            "eval_field": "490",
+            "reference_field": "490",
             "sub_fields": ["a"],
             "eval_text": eval_text,
             "reference_text": reference_text,

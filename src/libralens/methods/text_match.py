@@ -6,11 +6,11 @@ class TextMatchMethod(BaseMethod):
     name = "text-match"
     supported_fields = {
         "020": ("a",),
-        "094": ("a",),
         "100": ("a", "b"),
         "110": ("a", "b"),
         "245": ("a", "b", "d"),
         "264": ("a", "b", "c"),
+        "490": ("a",),
         "700": ("a", "b"),
         "710": ("a", "b")
     }
@@ -27,15 +27,6 @@ class TextMatchMethod(BaseMethod):
                 "subfields": ["a"],
                 "value": doc.eval.isbn_raw,
                 "variants": doc.eval.isbn_variants,
-            })
-
-        # 094
-        if "094" in fields and "a" in fields["094"]:
-            terms.append({
-                "field": "094",
-                "subfields": ["a"],
-                "value": doc.eval.zero_ninety_four,
-                "variants": [doc.eval.zero_ninety_four_clean],
             })
 
         # title
@@ -63,6 +54,15 @@ class TextMatchMethod(BaseMethod):
                     "value": doc.eval.parallel_title,
                     "variants": [doc.eval.parallel_title_clean],
                 })
+
+        # 490
+        if "490" in fields and "a" in fields["490"]:
+            terms.append({
+                "field": "490",
+                "subfields": ["a"],
+                "value": doc.eval.four_nine_zero,
+                "variants": [doc.eval.four_nine_zero_clean],
+            })
 
         # publication
         if "264" in fields:

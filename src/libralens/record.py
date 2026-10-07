@@ -28,7 +28,7 @@ class Record:
         self.sub_title = None
         self.contributors = None
         self.parallel_title = None
-        self.zero_ninety_four = None
+        self.four_nine_zero = None
         self.isbn_raw = None
         self.isbn_normalized = None
         self.isbn_variants = []
@@ -67,8 +67,6 @@ class Record:
                 self.isbn_variants = self.get_isbn_variants(self.isbn_raw)
             elif tag == "041":
                 self.lang_codes = [s["value"] for s in field["subfields"] if s["code"] == "a"]
-            elif tag == "094":
-                self.zero_ninety_four = next((s["value"] for s in field["subfields"] if s["code"] == "a"), None)
             elif tag == "245":
                 self.title = next((s["value"] for s in field["subfields"] if s["code"] == "a"), None)
                 self.sub_title = next((s["value"] for s in field["subfields"] if s["code"] == "b"), None)
@@ -105,8 +103,10 @@ class Record:
                 authority = next((s["value"] for s in field["subfields"] if s["code"] == "0"), None)
                 if authority:
                     self.authorities[tag].append(authority)
+            elif tag == "490":
+                self.four_nine_zero = next((s["value"] for s in field["subfields"] if s["code"] == "a"), None)
 
-        self.zero_ninety_four_clean = remove_angle_brackets(self.zero_ninety_four)
+        self.four_nine_zero_clean = remove_angle_brackets(self.four_nine_zero)
         self.title_clean = remove_angle_brackets(self.title)
         self.sub_title_clean = remove_angle_brackets(self.sub_title)
         self.parallel_title_clean = remove_angle_brackets(self.parallel_title)
