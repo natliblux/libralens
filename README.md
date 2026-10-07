@@ -364,11 +364,11 @@ valid checks / all checks
 Before matching, both the MARC values and the plain text are normalized using Unicode NFKC normalization, lowercasing, and whitespace normalization. Consecutive whitespaces are reduced to a single space, and leading or trailing whitespaces are removed. Some values are represented by multiple alternative strings before matching:
 
 - `020.a`: the original ISBN, a compact version without spaces or hyphens, and a version using spaces instead of hyphens
-- `094.a`: the value is matched directly
 - `100` and `700`: subfields `.a` and `.b` are concatenated into one person name, and multiple name variants are generated to account for differences in name ordering and punctuation
 - `110` and `710`: subfields `.a` and `.b` are concatenated, in that order, into one corporate name
 - `245`: title, subtitle, and parallel title are matched separately
 - `264`: locations, publishers, and years are matched separately
+- `490.a`: the value is matched seperately
 
 A logical value counts as matched if **at least one** of its generated variants can be found in the plain text. For example, the following person-name variants belong to one logical value:
 
@@ -392,11 +392,11 @@ matched values / all checked values
 | Field | Subfields |
 |---|---|
 | `020` | `.a` |
-| `094` | `.a` |
 | `100` | `.a` `.b` |
 | `110` | `.a` `.b` |
 | `245` | `.a` `.b` `.d` |
 | `264` | `.a` `.b` `.c` |
+| `490` | `.a` |
 | `700` | `.a` `.b` |
 | `710` | `.a` `.b` |
 
@@ -422,9 +422,7 @@ is compared as the equivalent of:
 Example Organization Research Department
 ```
 
-`094.a` is compared directly when a value is available in both records.
-
-For field `245`, selected subfields are compared individually when a value is available in both records. When both `.a` and `.b` are selected, an additional comparison of the combined `.a + .b` title is performed.
+For field `245`, selected subfields are compared individually when a value is available in both records. When both `.a` and `.b` are selected, an additional comparison of the combined `.a + .b` title is performed. `490.a` is compared indiviudally as well.
 
 The method score is:
 
@@ -438,10 +436,10 @@ sum of applicable comparison scores / number of applicable comparisons
 
 | Field | Subfields |
 |---|---|
-| `094` | `.a` |
 | `100` | `.a` `.b` |
 | `110` | `.a` `.b` |
 | `245` | `.a` `.b` `.c` `.d` |
+| `490` | `.a` |
 | `700` | `.a` `.b` |
 | `710` | `.a` `.b` |
 
@@ -461,10 +459,10 @@ Each string comparison produces a normalized similarity score between `0.0` and 
 
 | Field | Subfields |
 |---|---|
-| `094` | `.a` |
 | `100` | `.a` `.b` |
 | `110` | `.a` `.b` |
 | `245` | `.a` `.b` `.c` `.d` |
+| `490` | `.a` |
 | `700` | `.a` `.b` |
 | `710` | `.a` `.b` |
 
@@ -510,7 +508,7 @@ If both gold and platinum records are supplied, comparisons are performed agains
 
 `subfield-cardinality` evaluates whether the eval record contains the same amount of selected MARC data as a gold or platinum reference record.
 
-The method operates on the subfield level (except for controlfields) and considers only cardinality. For example, if both records contain exactly one `245.a`, the score equals `1.0` (subfield abscence can be desired). In general, the score is computed as the ratio between the smaller and larger count. If both counts are `0`, the score is `1.0`. The actual content of the values does not affect the score and can instead be evaluated using other methods. 
+The method operates on the subfield level (except for controlfields) and considers only cardinality. For example, if both records contain exactly one `245.a`, the score equals `1.0`. In general, the score is computed as the ratio between the smaller and larger count. If both counts are `0`, the score is `1.0` (subfield abscence can be desired). The actual content of the values does not affect the score and can instead be evaluated using other methods. 
 
 #### Standard fields
 
@@ -518,14 +516,13 @@ For fields other than `100`, `110`, `700` and `710`, occurrences of each selecte
 
 ```text
 Eval:
-264 $a Luxembourg
-264 $a Paris
+041 $a ltz $a fre
 
 Reference:
-264 $a Luxembourg
+041 $a ltz
 ```
 
-produces the following cardinality comparison for `264.a`:
+produces the following cardinality comparison for `041.a`:
 
 ```text
 eval count = 2
@@ -535,57 +532,60 @@ score = 0.5
 
 #### Mapped fields
 
-Person fields `100/700` are treated as one group, same as the corporate fields `110/710`. Field occurrences are mapped between the eval and reference groups based on their names (i.e. a mapping may cross MARC tags within the group). Cardinality is then evaluated **within each mapped pair**.
+Person fields `100/700` are treated as one group, same as the corporate
+fields `110/710`. Field occurrences are mapped between the eval and
+reference groups based on their names. A mapping may therefore cross MARC tags
+within the group.
 
-For example:
+Consider the following example:
 
-```text
+``` text
 Eval:
 100 $a Alice $0 X
 700 $a Bob
+700 $a Charlie $0 Z
 
 Reference:
 700 $a Alice $0 X
 700 $a Bob $0 Y
 ```
 
-For subfield `.0`, the mapped comparisons and final score are:
+Alice and Bob are mapped between the eval and reference records. Charlie is unmatched because no corresponding field exists in the reference record. For each selected subfield, cardinality is evaluated separately within
+every mapped pair. A mapped pair contributes even when the selected
+subfield is absent on both sides. For `.0`, this produces:
 
-```text
-Alice ↔ Alice: 1 vs 1 → 1.0
-Bob   ↔ Bob:   0 vs 1 → 0.0
+``` text
+Alice   ↔ Alice: 1 vs 1 → 1.0
+Bob     ↔ Bob:   0 vs 1 → 0.0
+Charlie ↔ —:     1 vs 0 → 0.0
 
-score = (1.0 + 0.0) / 2 = 0.5
+score = (1.0 + 0.0 + 0.0) / 3 = 0.333
 ```
 
-A mapped pair also contributes when both occurrences contain zero instances of the selected subfield. For example:
+Unmatched fields such as Charlie are included only when they contain the
+selected subfield. Therefore, Charlie contributes to `.0` because it
+contains `$0 Z`. For `.d`, the same records produce:
 
-```text
-Eval:
-100 $a Alice
+``` text
+Alice ↔ Alice: 0 vs 0 → 1.0
+Bob   ↔ Bob:   0 vs 0 → 1.0
 
-Reference:
-700 $a Alice
+score = (1.0 + 1.0) / 2 = 1.0
 ```
 
-produces `0` versus `0` for subfield `.0`, with a score of `1.0`.
+Charlie does not contribute to `.d` because the unmatched field contains
+no `.d`. This demonstrates that a mapped `0 vs 0` comparison is
+considered correct, while an unmatched field only affects the score for
+subfields it actually contains.
 
-Unmatched person/corporate fields are also considered, but **only when the unmatched field contains the selected subfield**, regardless of whether it occurs in the eval or reference record. For example, for `.0` the Bob field contributes a score of `0.0`:
+If there are no fields at all on either side for a person/corporate
+group (e.g. for `110/710` in this case), cardinality is likewise considered correct (`0 vs 0`) and
+produces a score of `1.0`.
 
-```text
-Eval:
-700 $a Alice
-700 $a Bob $0 X
-
-Reference:
-700 $a Alice
-```
-
-If there are no fields at all on either side for a person/corporate group, cardinality is still considered as correct (0 vs 0) with a score of `1.0`. 
 
 #### Aggregation
 
-For standard fields, there is a single cardinality comparison producing the final score for the subfield. For mapped fields, a selected subfield can produce multiple comparisons: one for every mapped occurrence and, where applicable, additional comparisons for unmatched occurrences. The subfield score is the mean of these comparison scores:
+For standard fields, a single cardinality comparison produces the final score for the subfield. For mapped fields, a selected subfield produces one comparison for every mapped occurrence and, if applicable, additional comparisons for unmatched occurrences. The subfield score is the mean of these comparisons:
 
 ```text
 sum of subfield scores / number of subfields
@@ -600,7 +600,6 @@ sum of subfield scores / number of subfields
 | `008` | |
 | `020` | `.a` |
 | `041` | `.a` |
-| `094` | `.a` |
 | `100` | `.a` `.b` `.d` `.0` `.e` `.4` |
 | `110` | `.a` `.b` `.d` `.0` `.e` `.4` |
 | `245` | `.a` `.b` `.c` `.d` |
@@ -609,8 +608,6 @@ sum of subfield scores / number of subfields
 | `490` | `.a` |
 | `700` | `.a` `.b` `.d` `.0` `.e` `.4` |
 | `710` | `.a` `.b` `.d` `.0` `.e` `.4` |
-
-For cardinality purposes, selecting a supported subfield from `100` or `700` evaluates that subfield across the combined `100/700` person group. The same applies to the combined `110/710` corporate group.
 
 If both gold and platinum records are supplied, cardinality is evaluated independently against each reference and the resulting reference scores are averaged.
 
@@ -716,7 +713,6 @@ Aggregating all methods, LibraLens currently supports the following MARC 21 fiel
 008
 020.a
 041.a
-094.a
 100.a, 100.b, 100.d, 100.0, 100.e, 100.4
 110.a, 110.b, 110.d, 110.0, 110.e, 110.4
 245.a, 245.b, 245.c, 245.d
