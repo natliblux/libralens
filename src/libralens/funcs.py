@@ -93,31 +93,3 @@ def remove_angle_brackets(s: str) -> str:
     if s is None:
         return None
     return s.replace("<<", "").replace(">>", "")
-
-def resolve_fields(fields: list[str] | None, supported_fields: dict[str, tuple[str, ...]]) -> dict[str, set[str]]:
-
-    if fields is None:
-        return {
-            field: set(subfields)
-            for field, subfields in supported_fields.items()
-        }
-
-    resolved = {}
-
-    for selector in fields:
-
-        if "." in selector:
-            field, subfield = selector.split(".", 1)
-            if field not in supported_fields:
-                continue
-            supported_subfields = supported_fields[field]
-            if subfield not in supported_subfields:
-                continue
-            resolved.setdefault(field, set()).add(subfield)
-        else:
-            field = selector
-            if field not in supported_fields:
-                continue
-            resolved[field] = set(supported_fields[field])
-            
-    return resolved

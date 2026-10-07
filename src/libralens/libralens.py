@@ -1,8 +1,9 @@
 from pathlib import Path
 from .run import Run
 import shutil
-from .funcs import record_to_xml, resolve_fields
+from .funcs import record_to_xml
 import json
+from .constants import FIELD_GROUPS
 from .methods import METHODS
 from .loader import load_documents
 from .llm import LLM
@@ -58,7 +59,7 @@ class LibraLens:
 
         self._validate_runs()
         for run in self.runs:
-            run.fields = resolve_fields(run.fields, METHODS[run.method].supported_fields)
+            run.fields = self._resolve_fields(run.fields, METHODS[run.method].supported_fields)
         self.methods = [run.method for run in self.runs]
         self.fields = list(dict.fromkeys(field for run in self.runs for field in run.fields))
         self.method_instances = {run.method: METHODS[run.method]() for run in self.runs}
@@ -261,3 +262,40 @@ class LibraLens:
 
         if invalid_methods:
             raise ValueError(f"unsupported methods: {', '.join(invalid_methods)}")
+
+    def _resolve_fields(self, fields: list[str] | None, supported_fields: dict[str, tuple[str, ...]]) -> dict[str, set[str]]:
+
+        if fields is None:
+            return {field: set(subfields) for field, subfields in supported_fields.items()}
+
+        resolved = {}
+
+        for selector in fields:
+
+            if "." in selector:
+                field, subfield = selector.split(".", 1)
+                if field not in supported_fields or subfield not in supported_fields[field]:
+                    continue
+                resolved.setdefault(field, set()).add(subfield)
+
+            else:
+                field = selector
+                if field not in supported_fields:
+                    continue
+                resolved[field] = set(supported_fields[field])
+
+        for group in FIELD_GROUPS:
+
+            selected_subfields = set().union(*(resolved.get(field, set()) for field in group))
+
+            if not selected_subfields:
+                continue
+
+            for field in group:
+                if field not in supported_fields:
+                    continue
+                for subfield in selected_subfields:
+                    if subfield in supported_fields[field]:
+                        resolved.setdefault(field, set()).add(subfield)
+
+        return resolved

@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from ..constants import MAPPED_FIELDS, MARC_LANGUAGE_CODES, MARC_RELATOR_CODES
+from ..constants import GROUPED_FIELDS, MARC_LANGUAGE_CODES, MARC_RELATOR_CODES
 from .base import BaseMethod
 
 class FieldValidityMethod(BaseMethod):
@@ -31,7 +31,7 @@ class FieldValidityMethod(BaseMethod):
         if "041" in fields and "a" in fields["041"]:
             self.check_041(doc.eval, valid, invalid)
 
-        relator_tags = {tag for tag in MAPPED_FIELDS & fields.keys() if "4" in fields[tag]}
+        relator_tags = {tag for tag in GROUPED_FIELDS & fields.keys() if "4" in fields[tag]}
         if relator_tags:
             self.check_relators(doc.eval, relator_tags, valid, invalid)
 

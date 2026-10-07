@@ -56,37 +56,6 @@ class RecordUsabilityMethod(BaseMethod):
         else:
             passed.append(result)
 
-    def check_title_semantics(self, record, reference, llm, passed, failed) -> None:
-
-        result = {
-            "criterion": "title-semantics",
-            "eval": record.title,
-            "reference": reference.title,
-            "missing": []
-        }
-
-        if reference.title is None:
-            passed.append(result)
-            return
-
-        if record.title is None:
-            result["missing"] = [reference.title]
-            failed.append(result)
-            return
-
-        llm_result = self.check_title_semantics_llm(
-            eval_title=record.title,
-            reference_title=reference.title,
-            llm=llm
-        )
-
-        result["missing"] = llm_result["missing"]
-
-        if llm_result["passed"]:
-            passed.append(result)
-        else:
-            failed.append(result)
-
     def check_isbn(self, record, reference, passed, failed) -> None:
 
         result = {

@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from ..constants import MAPPED_FIELDS
+from ..constants import GROUPED_FIELDS
 from .base import BaseMethod
 from ..funcs import join_subfields
 
@@ -37,15 +37,15 @@ class ValueComparisonMethod(BaseMethod):
 
         comparisons = []
 
-        mapped_fields = MAPPED_FIELDS & set(fields)
+        grouped_fields = GROUPED_FIELDS & set(fields)
 
-        if mapped_fields:
+        if grouped_fields:
             self.compare_mapped_names(
                 eval_record,
                 reference_record,
                 mapping,
                 fields,
-                mapped_fields,
+                grouped_fields,
                 comparisons
             )
 

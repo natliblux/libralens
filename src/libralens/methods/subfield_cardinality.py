@@ -1,5 +1,5 @@
 from .base import BaseMethod
-from ..constants import MAPPED_FIELDS, MAPPED_FIELD_GROUPS
+from ..constants import GROUPED_FIELDS, FIELD_GROUPS
 
 class SubfieldCardinality(BaseMethod):
 
@@ -66,7 +66,7 @@ class SubfieldCardinality(BaseMethod):
 
         for tag, sub_fields in fields.items():
 
-            if tag in MAPPED_FIELDS:
+            if tag in GROUPED_FIELDS:
                 continue
 
             if tag == "008":
@@ -101,7 +101,7 @@ class SubfieldCardinality(BaseMethod):
 
     def compare_mapped_groups(self, eval_record, reference_record, mapping, fields, comparisons) -> None:
 
-        for tags in MAPPED_FIELD_GROUPS:
+        for tags in FIELD_GROUPS:
 
             selected_subfields = set()
 

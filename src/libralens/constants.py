@@ -14,11 +14,11 @@ RELEVANT_FIELDS = {
     "710": ("a", "b", "d", "0", "e", "4"),
 }
 
-MAPPED_FIELD_GROUPS = [
+FIELD_GROUPS = [
     {"100", "700"},
     {"110", "710"},
 ]
-MAPPED_FIELDS = set().union(*MAPPED_FIELD_GROUPS)
+GROUPED_FIELDS = set().union(*FIELD_GROUPS)
 
 LLM_URL_ENV = "LIBRALENS_LLM_URL"
 LLM_MODEL_ENV = "LIBRALENS_LLM_MODEL"

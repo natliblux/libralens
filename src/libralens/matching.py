@@ -1,13 +1,13 @@
 from scipy.optimize import linear_sum_assignment
 from Levenshtein import ratio
 from .funcs import normalize_text, join_subfields
-from .constants import MAPPED_FIELD_GROUPS
+from .constants import FIELD_GROUPS
 
 def create_mapping(eval_record, reference_record) -> dict[int, int]:
 
     mapping = {}
 
-    for tags in MAPPED_FIELD_GROUPS:
+    for tags in FIELD_GROUPS:
         mapping.update(map_field_group(eval_record, reference_record, tags))
 
     return mapping
