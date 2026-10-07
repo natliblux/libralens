@@ -1,7 +1,7 @@
 from difflib import SequenceMatcher
-from .comparison import ComparisonMethod
+from .value_comparison import ValueComparisonMethod
 
-class CommonSubstringMethod(ComparisonMethod):
+class CommonSubstringMethod(ValueComparisonMethod):
 
     name = "common-substring"
 

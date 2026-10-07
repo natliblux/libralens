@@ -1,7 +1,7 @@
 from Levenshtein import ratio
-from .comparison import ComparisonMethod
+from .value_comparison import ValueComparisonMethod
 
-class EditDistanceMethod(ComparisonMethod):
+class EditDistanceMethod(ValueComparisonMethod):
 
     name = "edit-distance"
 

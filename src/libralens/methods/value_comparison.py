@@ -3,7 +3,7 @@ from ..constants import MAPPED_FIELDS
 from .base import BaseMethod
 from ..funcs import join_subfields
 
-class ComparisonMethod(BaseMethod):
+class ValueComparisonMethod(BaseMethod):
 
     supported_fields = {
         "100": ("a", "b"),
