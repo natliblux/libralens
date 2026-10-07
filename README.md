@@ -26,9 +26,11 @@ LibraLens is designed as a toolbox, allowing different evaluation methods and MA
 - [Evaluation Methods](#evaluation-methods)
   - [Field Validity](#field-validity)
   - [Text Match](#text-match)
-  - [Common Substring](#common-substring)
-  - [Edit Distance](#edit-distance)
-  - [F1 Score](#f1-score)
+  - [Common Substring](#value-comparison)
+  - [Edit Distance](#value-comparison)
+  - [F1 Score](#set-comparison)
+  - [Precision Score](#set-comparison)
+  - [Recall Score](#set-comparison)
   - [Subfield Cardinality](#subfield-cardinality)
   - [Record Usability](#record-usability)
 - [Configuration](#configuration)
@@ -98,7 +100,7 @@ Alternatively, from the command line:
 --fields 100 700 245.a
 ```
 
-Selecting a complete field (e.g. 100) means that every subfield of 100, supported by the respective method, is considered. Unsupported fields or subfields are automatically ignored by that method.
+Selecting a complete field (e.g. `245`) means that every subfield of `245`, supported by the respective method, is considered. For grouped person (`100/700`) and corporate (`110/710`) fields, a selected subfield applies to the entire group, as described in [`Evaluation Principles`](#evaluation-principles). Unsupported fields or subfields are automatically ignored by LibraLens.
 
 ### Runs
 
@@ -313,17 +315,39 @@ Detailed diagnostics can be accessed on disk by passing the `--output` option.
 
 ## Evaluation Methods
 
-LibraLens currently provides the following seven methods:
+LibraLens currently provides the following nine methods:
 
 | Method | Requires | Purpose |
 |---|---|---|
 | [`field-validity`](#field-validity) |  | Checks whether the eval record conforms to known formats and controlled vocabularies. |
 | [`text-match`](#text-match) | Plain Text | Matches strings from the eval record with the underlying PDF plain text. |
-| [`common-substring`](#common-substring) | Gold and/or Platinum | Compares the eval record to the reference record using the longest common substring. |
-| [`edit-distance`](#edit-distance) | Gold and/or Platinum | Compares the eval record to the reference record using edit distance. |
-| [`f1-score`](#f1-score) | Gold and/or Platinum | Computes the F1 score between the eval and reference record for values with unambiguous equality. |
-| [`subfield-cardinality`](#subfield-cardinality) | Gold and/or Platinum | Compares the cardinality of selected fields and subfields in the eval and reference records. |
-| [`record-usability`](#record-usability) | Gold and/or Platinum, [LLM](#llm-configuration) | Applies binary minimum-quality criteria to determine whether the record is usable. |
+| [`common-substring`](#value-comparison) | Gold or Platinum | Compares the eval record to the reference record using the longest common substring. |
+| [`edit-distance`](#value-comparison) | Gold or Platinum | Compares the eval record to the reference record using edit distance. |
+| [`f1-score`](#set-comparison) | Gold or Platinum | Computes the F1 score between the eval and reference record for values with unambiguous equality. |
+| [`precision-score`](#set-comparison) | Gold or Platinum | Computes the precision score between the eval and reference record for values with unambiguous equality. |
+| [`recall-score`](#set-comparison) | Gold or Platinum | Computes the recall score between the eval and reference record for values with unambiguous equality. |
+| [`subfield-cardinality`](#subfield-cardinality) | Gold or Platinum | Compares the cardinality of selected fields and subfields in the eval and reference records. |
+| [`record-usability`](#record-usability) | Gold or Platinum and [LLM](#llm-configuration) | Applies binary minimum-quality criteria to determine whether the record is usable. |
+
+### Evaluation Principles
+
+* Methods requiring a reference record can use gold, platinum, or both. If both gold and platinum records are supplied, the method is evaluated independently against each reference and the two resulting reference scores are averaged.
+* LibraLens treats the person fields `100/700` as one group and the corporate fields `110/710` as another group. Selecting a subfield from either field in the group automatically selects the same subfield for the entire group (e.g. selecting `100.0` selects `.0` across both `100` and `700`).
+* Comparisons involving these fields are performed within their respective groups and may therefore cross MARC tags. For certain methods, LibraLens maps fields between the eval and reference groups based on their names, for example:
+
+``` text
+Eval:
+100 $a Alice
+700 $a Bob
+
+Reference:
+700 $a Alice
+100 $a Bob
+
+Mappings:
+100 Alice ↔ 700 Alice
+700 Bob   ↔ 100 Bob
+```
 
 ### Field Validity
 
@@ -345,7 +369,7 @@ valid checks / all checks
 
 **Requires:** no additional document data
 
-**Supported fields:**
+**Supports:**
 
 | Field | Subfields |
 |---|---|
@@ -357,6 +381,8 @@ valid checks / all checks
 | `700` | `.4` |
 | `710` | `.4` |
 
+[↑ Back to all evaluation methods](#evaluation-methods)
+
 ### Text Match
 
 `text-match` matches strings from the eval record with the underlying PDF plain text.
@@ -364,11 +390,11 @@ valid checks / all checks
 Before matching, both the MARC values and the plain text are normalized using Unicode NFKC normalization, lowercasing, and whitespace normalization. Consecutive whitespaces are reduced to a single space, and leading or trailing whitespaces are removed. Some values are represented by multiple alternative strings before matching:
 
 - `020.a`: the original ISBN, a compact version without spaces or hyphens, and a version using spaces instead of hyphens
-- `100` and `700`: subfields `.a` and `.b` are concatenated into one person name, and multiple name variants are generated to account for differences in name ordering and punctuation
-- `110` and `710`: subfields `.a` and `.b` are concatenated, in that order, into one corporate name
+- `100/700`: subfields `.a` and `.b` are concatenated into one person name, and multiple name variants are generated to account for differences in name ordering and punctuation
+- `110/710`: subfields `.a` and `.b` are concatenated, in that order, into one corporate name
 - `245`: title, subtitle, and parallel title are matched separately
 - `264`: locations, publishers, and years are matched separately
-- `490.a`: the value is matched seperately
+- `490.a`: the value is matched separately
 
 A logical value counts as matched if **at least one** of its generated variants can be found in the plain text. For example, the following person-name variants belong to one logical value:
 
@@ -387,7 +413,7 @@ matched values / all checked values
 
 **Requires:** plain text
 
-**Supported fields:**
+**Supports:**
 
 | Field | Subfields |
 |---|---|
@@ -400,115 +426,95 @@ matched values / all checked values
 | `700` | `.a` `.b` |
 | `710` | `.a` `.b` |
 
-For `100`, `110`, `700`, and `710`, subfields `.a` and `.b` are treated as parts of the same name. If either is selected, the combined `.a + .b` name is considered. For corporate fields `110` and `710`, this is a direct concatenation of the available `.a` and `.b` values in that order; no person-name permutations are generated.
+[↑ Back to all evaluation methods](#evaluation-methods)
 
-### Common Substring
+### Value Comparison
 
-`common-substring` compares strings from the eval record with corresponding strings from a gold or platinum reference record using the longest common substring.
+The methods `common-substring` and `edit-distance` compare strings from the eval record with corresponding strings from a gold or platinum reference record. Each string comparison produces a normalized similarity score between `0.0` and `1.0`:
 
-Each comparison produces a normalized similarity score between `0.0` and `1.0`, based on the length of the longest continuous substring shared by both values. Same as the [`edit-distance`](#edit-distance) method, **only values for which a comparison can be established contribute to the score**. Missing, extra, or otherwise unmatched values are omitted rather than assigned a score of `0.0`. The method therefore measures the similarity of comparable values rather than record completeness or cardinality. Differences in cardinality can instead be evaluated using [`subfield-cardinality`](#subfield-cardinality).
+-   `common-substring` uses the length of the longest continuous substring shared by both values.
+-   `edit-distance` uses the normalized Levenshtein similarity.
 
-Person fields (`100` and `700`) are mapped across the eval and reference records according to the person they represent, same as corporate fields (`110` and `710`). A field may therefore be mapped across tags (e.g. an eval `710` could be compared to a reference `110`).
+For both methods, **only values for which a comparison can be established contribute to the score**. Missing, extra, or otherwise unmatched values are omitted rather than assigned a score of `0.0`. The methods therefore measure the similarity of comparable values rather than record completeness or cardinality. Differences in cardinality can instead be evaluated using [`subfield-cardinality`](#subfield-cardinality).
 
-For person and corporate fields, `.a` and `.b` are concatenated into a single string before the longest common substring is calculated. The available values are concatenated in `.a + .b` order. For example:
 
-```text
+For person and corporate fields, `.a` and `.b` are concatenated into a
+single string before the similarity is calculated. The available values
+are concatenated in `.a + .b` order. For example:
+
+``` text
 710 $a Example Organization $b Research Department
 ```
 
 is compared as the equivalent of:
 
-```text
+``` text
 Example Organization Research Department
 ```
 
-For field `245`, selected subfields are compared individually when a value is available in both records. When both `.a` and `.b` are selected, an additional comparison of the combined `.a + .b` title is performed. `490.a` is compared indiviudally as well.
+For field `245`, selected subfields are compared individually when a
+value is available in both records. When both `.a` and `.b` are
+selected, an additional comparison of the combined `.a + .b` title is
+performed. `490.a` is compared individually as well.
 
 The method score is:
 
-```text
+``` text
 sum of applicable comparison scores / number of applicable comparisons
 ```
 
 **Requires:** gold or platinum
 
-**Supported fields:**
-
-| Field | Subfields |
-|---|---|
-| `100` | `.a` `.b` |
-| `110` | `.a` `.b` |
-| `245` | `.a` `.b` `.c` `.d` |
-| `490` | `.a` |
-| `700` | `.a` `.b` |
-| `710` | `.a` `.b` |
-
-If both gold and platinum records are supplied, comparisons are performed against both references and the resulting reference scores are averaged.
-
-### Edit Distance
-
-`edit-distance` compares strings from the eval record with corresponding strings from a gold or platinum reference record using the normalized Levenshtein similarity metric.
-
-The method follows the same comparison procedure as [`common-substring`](#common-substring), including field mapping, name construction, handling of missing and unmatched values, and score aggregation. The only difference is the string similarity metric istelf: `edit-distance` uses Levenshtein similarity instead of the longest common substring.
-
-Each string comparison produces a normalized similarity score between `0.0` and `1.0`.
-
-**Requires:** gold or platinum
-
-**Supported fields:**
-
-| Field | Subfields |
-|---|---|
-| `100` | `.a` `.b` |
-| `110` | `.a` `.b` |
-| `245` | `.a` `.b` `.c` `.d` |
-| `490` | `.a` |
-| `700` | `.a` `.b` |
-| `710` | `.a` `.b` |
-
-If both gold and platinum records are supplied, comparisons are performed against both references and the resulting reference scores are averaged.
-
-### F1 Score
-
-`f1-score` computes the F1 score between the eval and reference record for values with unambiguous equality.
-
-The method is intentionally restricted to values that can be compared exactly, without fuzzy matching or additional heuristics. It currently compares language codes from `041.a`, authority identifiers from `.0`, and relator codes from `.4`.
-
-Values are treated as sets. For each comparison, values present in both eval and reference are true positives, values only present in eval are false positives, and values only present in the reference are false negatives:
-
-```text
-precision = true positives / (true positives + false positives)
-
-recall = true positives / (true positives + false negatives)
-
-F1 = 2 × true positives / (2 × true positives + false positives + false negatives)
-```
-
-Person fields `100` and `700` are combined into one comparison group, while corporate fields `110` and `710` form a second group. Unlike `edit-distance` and `common-substring`, the F1 comparison operates on sets of selected values rather than mapped pairs of field occurrences. Extra and missing values therefore directly affect precision and recall.
-
-Only selected fields and subfields participate in a comparison. Comparisons for which both eval and reference contain no values are omitted.
-
-The method score is the mean of all applicable F1 comparison scores.
-
-**Requires:** gold or platinum
-
-**Supported fields:**
+**Supports:**
 
 | Field | Subfields |
 |---|---|
 | `041` | `.a` |
 | `100` | `.0` `.4` |
 | `110` | `.0` `.4` |
-| `700` | `.0` `.4` |
 | `710` | `.0` `.4` |
+| `700` | `.0` `.4` |
 
-If both gold and platinum records are supplied, comparisons are performed against both references and the resulting reference scores are averaged.
+[↑ Back to all evaluation methods](#evaluation-methods)
+
+### Set Comparison
+
+`f1-score`, `precision-score`, and `recall-score` compare sets of values from the eval and reference records for values with unambiguous equality.
+
+The methods are intentionally restricted to values that can be compared exactly, without fuzzy matching or additional heuristics. They currently compare language codes from `041.a`, authority identifiers from `.0`, and relator codes from `.4`.
+
+Values are treated as sets. For each comparison, values present in both eval and reference are true positives, values only present in eval are false positives, and values only present in the reference are false negatives. The selected method determines how these values are combined into a score:
+
+``` text
+precision = true positives / (true positives + false positives)
+recall = true positives / (true positives + false negatives)
+F1 = 2 × true positives / (2 × true positives + false positives + false negatives)
+```
+
+Only selected fields and subfields participate in a comparison. Comparisons for which both eval and reference contain no values are omitted. For `precision-score`, a comparison is also omitted when the eval contains no values, because precision is undefined. For `recall-score`, a comparison is omitted when the reference contains no values, because recall is undefined.
+
+The method score is the mean of all applicable comparison scores.
+
+**Requires:** gold or platinum
+
+**Supports:**
+
+| Field | Subfields |
+|---|---|
+| `100` | `.a` `.b` |
+| `110` | `.a` `.b` |
+| `245` | `.a` `.b` `.c` `.d` |
+| `490` | `.a` |
+| `700` | `.a` `.b` |
+| `710` | `.a` `.b` |
+
+[↑ Back to all evaluation methods](#evaluation-methods)
 
 ### Subfield Cardinality
 
 `subfield-cardinality` evaluates whether the eval record contains the same amount of selected MARC data as a gold or platinum reference record.
 
-The method operates on the subfield level (except for controlfields) and considers only cardinality. For example, if both records contain exactly one `245.a`, the score equals `1.0`. In general, the score is computed as the ratio between the smaller and larger count. If both counts are `0`, the score is `1.0` (subfield abscence can be desired). The actual content of the values does not affect the score and can instead be evaluated using other methods. 
+The method operates on the subfield level (except for controlfields) and considers only cardinality. For example, if both records contain exactly one `245.a`, the score equals `1.0`. In general, the score is computed as the ratio between the smaller and larger count. If both counts are `0`, the score is `1.0` (subfield absence can be desired). The actual content of the values does not affect the score and can instead be evaluated using other methods. 
 
 #### Standard fields
 
@@ -532,10 +538,7 @@ score = 0.5
 
 #### Mapped fields
 
-Person fields `100/700` are treated as one group, same as the corporate
-fields `110/710`. Field occurrences are mapped between the eval and
-reference groups based on their names. A mapping may therefore cross MARC tags
-within the group.
+For person and corporate fields, cardinality is evaluated separately within each mapped pair for every selected subfield. A mapped pair contributes even when the selected subfield is absent on both sides.
 
 Consider the following example:
 
@@ -550,9 +553,7 @@ Reference:
 700 $a Bob $0 Y
 ```
 
-Alice and Bob are mapped between the eval and reference records. Charlie is unmatched because no corresponding field exists in the reference record. For each selected subfield, cardinality is evaluated separately within
-every mapped pair. A mapped pair contributes even when the selected
-subfield is absent on both sides. For `.0`, this produces:
+Alice and Bob are mapped, while Charlie is unmatched. For `.0`, this produces:
 
 ``` text
 Alice   ↔ Alice: 1 vs 1 → 1.0
@@ -562,9 +563,7 @@ Charlie ↔ —:     1 vs 0 → 0.0
 score = (1.0 + 0.0 + 0.0) / 3 = 0.333
 ```
 
-Unmatched fields such as Charlie are included only when they contain the
-selected subfield. Therefore, Charlie contributes to `.0` because it
-contains `$0 Z`. For `.d`, the same records produce:
+Unmatched fields are included only when they contain the selected subfield. Charlie therefore contributes to `.0` because it contains `$0 Z`. For `.d` the same records produce:
 
 ``` text
 Alice ↔ Alice: 0 vs 0 → 1.0
@@ -573,27 +572,21 @@ Bob   ↔ Bob:   0 vs 0 → 1.0
 score = (1.0 + 1.0) / 2 = 1.0
 ```
 
-Charlie does not contribute to `.d` because the unmatched field contains
-no `.d`. This demonstrates that a mapped `0 vs 0` comparison is
-considered correct, while an unmatched field only affects the score for
-subfields it actually contains.
-
-If there are no fields at all on either side for a person/corporate
-group (e.g. for `110/710` in this case), cardinality is likewise considered correct (`0 vs 0`) and
-produces a score of `1.0`.
-
+Charlie does not contribute because the unmatched field contains no `.d`. If there are no fields at all on either side of a group, cardinality is considered correct (`0 vs 0`) and produces a score of `1.0`.
 
 #### Aggregation
 
-For standard fields, a single cardinality comparison produces the final score for the subfield. For mapped fields, a selected subfield produces one comparison for every mapped occurrence and, if applicable, additional comparisons for unmatched occurrences. The subfield score is the mean of these comparisons:
+Each selected field or subfield produces a score. For standard fields, this score is obtained directly from the global cardinality comparison. For person and corporate fields, the score for a selected subfield is the mean of its mapped and applicable unmatched occurrence comparisons:
 
 ```text
-sum of subfield scores / number of subfields
+subfield score = sum of occurrence comparison scores / number of occurrence comparisons
 ```
+
+The method score is calcilated as the mean of all selected field and subfield scores.
 
 **Requires:** gold or platinum
 
-**Supported fields:**
+**Supports:**
 
 | Field | Subfields |
 |---|---|
@@ -609,7 +602,7 @@ sum of subfield scores / number of subfields
 | `700` | `.a` `.b` `.d` `.0` `.e` `.4` |
 | `710` | `.a` `.b` `.d` `.0` `.e` `.4` |
 
-If both gold and platinum records are supplied, cardinality is evaluated independently against each reference and the resulting reference scores are averaged.
+[↑ Back to all evaluation methods](#evaluation-methods)
 
 ### Record Usability
 
@@ -627,13 +620,13 @@ The currently implemented criteria are:
 - **ISBN match (`020.a`)**: if the reference contains an ISBN, the eval ISBN must match it after normalization. If the reference contains no ISBN, the criterion passes.
 - **Title presence (`245.a`)**: the eval record must contain a main title.
 - **Title semantics (`245.a`)**: the eval title must retain the semantically important content of the reference title. An LLM identifies important missing words or concepts while ignoring semantically unimportant differences such as articles, prepositions, and filler words.
-- **Corporate presence (`110`, `710`)**: if the reference contains at least one corporate name in the selected fields, the eval record must also contain at least one. The number and identity of corporate names do not need to match.
+- **Corporate presence (`110`, `710`)**: if the reference contains at least one corporate name in the selected fields, the eval record must also contain at least one. The number and identity of corporate names do not need to match. Subfields `.a` and `.b` are treated as parts of the same corporate name and are concatenated as `.a + .b`. If either is selected, the combined name is considered here.
 
 Every executed criterion is listed in the diagnostic output under either `passed` or `failed`.
 
 **Requires:** gold or platinum and an [LLM](#llm-configuration)
 
-**Supported fields:**
+**Supports:**
 
 | Field | Subfields |
 |---|---|
@@ -642,9 +635,7 @@ Every executed criterion is listed in the diagnostic output under either `passed
 | `245` | `.a` |
 | `710` | `.a` `.b` |
 
-For the corporate-presence criterion, `110` and `710` subfields `.a` and `.b` are treated as parts of the same corporate name and concatenated in `.a + .b` order. If either is selected, the combined name is considered. This criterion tests for the presence of a corporate name; it does not compare the identity or number of corporate names between records.
-
-When both gold and platinum records are available, gold is used as the reference. Platinum is used only when no gold record is available.
+[↑ Back to all evaluation methods](#evaluation-methods)
 
 ## Configuration
 
