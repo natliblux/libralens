@@ -9,6 +9,7 @@ class ValueComparisonMethod(BaseMethod):
         "100": ("a", "b"),
         "110": ("a", "b"),
         "245": ("a", "b", "c", "d"),
+        "264": ("a", "b", "c"),
         "490": ("a",),
         "700": ("a", "b"),
         "710": ("a", "b")
@@ -52,6 +53,9 @@ class ValueComparisonMethod(BaseMethod):
         if "245" in fields:
             self.compare_245(eval_record, reference_record, fields["245"], comparisons)
 
+        if "264" in fields:
+            self.compare_264(eval_record, reference_record, mapping, fields["264"], comparisons)
+
         if "490" in fields:
             self.compare_490(eval_record, reference_record, fields["490"], comparisons)
 
@@ -90,6 +94,41 @@ class ValueComparisonMethod(BaseMethod):
                 "reference_text": reference_text,
                 "score": self.compare_strings(eval_text, reference_text),
             })
+
+    def compare_264(self, eval_record, reference_record, mapping, sub_fields, comparisons) -> None:
+
+        for eval_field in eval_record.fields:
+
+            if eval_field["tag"] != "264":
+                continue
+
+            eval_id = eval_field["id"]
+            if eval_id not in mapping:
+                continue
+
+            reference_field = reference_record.fields[mapping[eval_id]]
+            if reference_field["tag"] != "264":
+                continue
+
+            for code in ["a", "b", "c"]:
+
+                if code not in sub_fields:
+                    continue
+
+                eval_text = self.get_subfield(eval_field, code)
+                reference_text = self.get_subfield(reference_field, code)
+
+                if eval_text is None or reference_text is None:
+                    continue
+
+                comparisons.append({
+                    "eval_field": "264",
+                    "reference_field": "264",
+                    "sub_fields": [code],
+                    "eval_text": eval_text,
+                    "reference_text": reference_text,
+                    "score": self.compare_strings(eval_text, reference_text),
+                })
 
     def compare_490(self, eval_record, reference_record, sub_fields, comparisons) -> None:
 
