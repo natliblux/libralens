@@ -24,15 +24,15 @@ LibraLens is designed as a toolbox, allowing different evaluation methods and MA
   - [Command Line Interface](#command-line-interface)
   - [Results](#results)
 - [Evaluation Methods](#evaluation-methods)
-  - [Field Validity](#field-validity)
-  - [Text Match](#text-match)
-  - [Common Substring](#value-comparison)
-  - [Edit Distance](#value-comparison)
-  - [F1 Score](#set-comparison)
-  - [Precision Score](#set-comparison)
-  - [Recall Score](#set-comparison)
-  - [Subfield Cardinality](#subfield-cardinality)
-  - [Record Usability](#record-usability)
+  - [Field Validity](#method-field-validity)
+  - [Text Match](#method-text-match)
+  - [Common Substring](#methods-value-comparisons)
+  - [Edit Distance](#methods-value-comparisons)
+  - [F1 Score](#methods-set-comparisons)
+  - [Precision Score](#methods-set-comparisons)
+  - [Recall Score](#methods-set-comparisons)
+  - [Subfield Cardinality](#method-subfield-cardinality)
+  - [Record Usability](#method-record-usability)
 - [Configuration](#configuration)
   - [Document Matching](#document-matching)
   - [LLM Configuration](#llm-configuration)
@@ -319,15 +319,15 @@ LibraLens currently provides the following nine methods:
 
 | Method | Requires | Purpose |
 |---|---|---|
-| [`field-validity`](#field-validity) |  | Checks whether the eval record conforms to known formats and controlled vocabularies. |
-| [`text-match`](#text-match) | Plain Text | Matches strings from the eval record with the underlying PDF plain text. |
-| [`common-substring`](#value-comparison) | Gold or Platinum | Compares the eval record to the reference record using the longest common substring. |
-| [`edit-distance`](#value-comparison) | Gold or Platinum | Compares the eval record to the reference record using edit distance. |
-| [`f1-score`](#set-comparison) | Gold or Platinum | Computes the F1 score between the eval and reference record for values with unambiguous equality. |
-| [`precision-score`](#set-comparison) | Gold or Platinum | Computes the precision score between the eval and reference record for values with unambiguous equality. |
-| [`recall-score`](#set-comparison) | Gold or Platinum | Computes the recall score between the eval and reference record for values with unambiguous equality. |
-| [`subfield-cardinality`](#subfield-cardinality) | Gold or Platinum | Compares the cardinality of selected fields and subfields in the eval and reference records. |
-| [`record-usability`](#record-usability) | Gold or Platinum and [LLM](#llm-configuration) | Applies binary minimum-quality criteria to determine whether the record is usable. |
+| [`field-validity`](#method-field-validity) |  | Checks whether the eval record conforms to known formats and controlled vocabularies. |
+| [`text-match`](#method-text-match) | Plain Text | Matches strings from the eval record with the underlying PDF plain text. |
+| [`common-substring`](#methods-value-comparisons) | Reference Record | Compares the eval record to the reference record using the longest common substring. |
+| [`edit-distance`](#methods-value-comparisons) | Reference Record | Compares the eval record to the reference record using edit distance. |
+| [`f1-score`](#methods-set-comparisons) | Reference Record | Computes the F1 score between the eval and reference record for values with unambiguous equality. |
+| [`precision-score`](#methods-set-comparisons) | Reference Record | Computes the precision score between the eval and reference record for values with unambiguous equality. |
+| [`recall-score`](#methods-set-comparisons) | Reference Record | Computes the recall score between the eval and reference record for values with unambiguous equality. |
+| [`subfield-cardinality`](#method-subfield-cardinality) | Reference Record | Compares the cardinality of selected fields and subfields in the eval and reference records. |
+| [`record-usability`](#method-record-usability) | Reference Record and [LLM](#llm-configuration) | Applies binary minimum-quality criteria to determine whether the record is usable. |
 
 ### Evaluation Principles
 
@@ -349,7 +349,7 @@ Mappings:
 700 Bob   ↔ 100 Bob
 ```
 
-### Field Validity
+### Method: Field Validity
 
 `field-validity` checks whether the eval record conforms to known formats and controlled vocabularies.
 
@@ -383,7 +383,7 @@ valid checks / all checks
 
 [↑ Back to all evaluation methods](#evaluation-methods)
 
-### Text Match
+### Method: Text Match
 
 `text-match` matches strings from the eval record with the underlying PDF plain text.
 
@@ -428,7 +428,7 @@ matched values / all checked values
 
 [↑ Back to all evaluation methods](#evaluation-methods)
 
-### Value Comparison
+### Methods: Value Comparisons
 
 The methods `common-substring` and `edit-distance` compare strings from the eval record with corresponding strings from a gold or platinum reference record. Each string comparison produces a normalized similarity score between `0.0` and `1.0`:
 
@@ -469,15 +469,16 @@ sum of applicable comparison scores / number of applicable comparisons
 
 | Field | Subfields |
 |---|---|
-| `041` | `.a` |
-| `100` | `.0` `.4` |
-| `110` | `.0` `.4` |
-| `710` | `.0` `.4` |
-| `700` | `.0` `.4` |
+| `100` | `.a` `.b` |
+| `110` | `.a` `.b` |
+| `245` | `.a` `.b` `.c` `.d` |
+| `490` | `.a` |
+| `710` | `.a` `.b` |
+| `700` | `.a` `.b` |
 
 [↑ Back to all evaluation methods](#evaluation-methods)
 
-### Set Comparison
+### Methods: Set Comparisons
 
 `f1-score`, `precision-score`, and `recall-score` compare sets of values from the eval and reference records for values with unambiguous equality.
 
@@ -501,16 +502,15 @@ The method score is the mean of all applicable comparison scores.
 
 | Field | Subfields |
 |---|---|
-| `100` | `.a` `.b` |
-| `110` | `.a` `.b` |
-| `245` | `.a` `.b` `.c` `.d` |
-| `490` | `.a` |
-| `700` | `.a` `.b` |
-| `710` | `.a` `.b` |
+| `041` | `.a` |
+| `100` | `.0` `.4` |
+| `110` | `.0` `.4` |
+| `700` | `.0` `.4` |
+| `710` | `.0` `.4` |
 
 [↑ Back to all evaluation methods](#evaluation-methods)
 
-### Subfield Cardinality
+### Method: Subfield Cardinality
 
 `subfield-cardinality` evaluates whether the eval record contains the same amount of selected MARC data as a gold or platinum reference record.
 
@@ -604,7 +604,7 @@ The method score is calcilated as the mean of all selected field and subfield sc
 
 [↑ Back to all evaluation methods](#evaluation-methods)
 
-### Record Usability
+### Method: Record Usability
 
 `record-usability` applies binary minimum-quality criteria to determine whether the record is usable.
 
