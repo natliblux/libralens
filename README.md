@@ -331,9 +331,12 @@ LibraLens currently provides the following nine methods:
 
 ### Evaluation Principles
 
-* Methods requiring a reference record can use gold, platinum, or both. If both gold and platinum records are supplied, the method is evaluated independently against each reference and the two resulting reference scores are averaged.
-* LibraLens treats the person fields `100/700` as one group and the corporate fields `110/710` as another group. Selecting a subfield from either field in the group automatically selects the same subfield for the entire group (e.g. selecting `100.0` selects `.0` across both `100` and `700`).
-* Comparisons involving these fields are performed within their respective groups and may therefore cross MARC tags. For certain methods, LibraLens maps fields between the eval and reference groups based on their names, for example:
+* **Referencing**  
+  Methods requiring a reference record can use gold, platinum, or both. If both gold and platinum records are supplied, the method is evaluated independently against each reference and the two resulting reference scores are averaged.
+* **Grouping**  
+  LibraLens treats the person fields `100/700` as one group and the corporate fields `110/710` as another group. Selecting a subfield from either field in the group automatically selects the same subfield for the entire group (e.g. selecting `100.0` selects `.0` across both `100` and `700`).
+* **Mapping**  
+  For certain methods, LibraLens maps corresponding field occurrences between eval and reference records. This applies to person (`100/700`), corporate (`110/710`), and `264` fields. Person and corporate mappings may cross MARC tags within their respective groups, while `264` occurrences are mapped only to other `264` occurrences. For example:
 
 ``` text
 Eval:
@@ -435,12 +438,10 @@ The methods `common-substring` and `edit-distance` compare strings from the eval
 -   `common-substring` uses the length of the longest continuous substring shared by both values.
 -   `edit-distance` uses the normalized Levenshtein similarity.
 
-For both methods, **only values for which a comparison can be established contribute to the score**. Missing, extra, or otherwise unmatched values are omitted rather than assigned a score of `0.0`. The methods therefore measure the similarity of comparable values rather than record completeness or cardinality. Differences in cardinality can instead be evaluated using [`subfield-cardinality`](#subfield-cardinality).
+For both methods, **only values for which a comparison can be established contribute to the score**. Missing, extra, or otherwise unmatched values are omitted rather than assigned a score of `0.0`. The methods therefore measure the similarity of comparable values rather than record completeness or cardinality. Differences in cardinality can instead be evaluated using [`subfield-cardinality`](#method-subfield-cardinality).
 
 
-For person and corporate fields, `.a` and `.b` are concatenated into a
-single string before the similarity is calculated. The available values
-are concatenated in `.a + .b` order. For example:
+For person and corporate fields, `.a` and `.b` are concatenated into a single string before the similarity is calculated. The available values are concatenated in `.a + .b` order. For example:
 
 ``` text
 710 $a Example Organization $b Research Department
@@ -452,10 +453,7 @@ is compared as the equivalent of:
 Example Organization Research Department
 ```
 
-For field `245`, selected subfields are compared individually when a
-value is available in both records. When both `.a` and `.b` are
-selected, an additional comparison of the combined `.a + .b` title is
-performed. `490.a` is compared individually as well.
+For field `245`, selected subfields are compared individually when a value is available in both records. When both `.a` and `.b` are selected, an additional comparison of the combined `.a + .b` title is performed. `490.a` is compared individually as well. For field `264`, subfields `.a`, `.b`, and `.c` are compared individually within corresponding mapped occurrences.
 
 The method score is:
 
@@ -472,9 +470,10 @@ sum of applicable comparison scores / number of applicable comparisons
 | `100` | `.a` `.b` |
 | `110` | `.a` `.b` |
 | `245` | `.a` `.b` `.c` `.d` |
+| `264` | `.a` `.b` `.c` |
 | `490` | `.a` |
-| `710` | `.a` `.b` |
 | `700` | `.a` `.b` |
+| `710` | `.a` `.b` |
 
 [↑ Back to all evaluation methods](#evaluation-methods)
 
@@ -518,7 +517,7 @@ The method operates on the subfield level (except for controlfields) and conside
 
 #### Standard fields
 
-For fields other than `100`, `110`, `700` and `710`, occurrences of each selected subfield are counted globally in the eval and reference records, for example:
+For fields other than `100`, `110`, `264`, `700`, and `710`, occurrences of each selected subfield are counted globally in the eval and reference records, for example:
 
 ```text
 Eval:
@@ -538,7 +537,7 @@ score = 0.5
 
 #### Mapped fields
 
-For person and corporate fields, cardinality is evaluated separately within each mapped pair for every selected subfield. A mapped pair contributes even when the selected subfield is absent on both sides.
+For person, corporate, and `264` fields, cardinality is evaluated separately within each mapped pair for every selected subfield. A mapped pair contributes even when the selected subfield is absent on both sides.
 
 Consider the following example:
 
@@ -572,17 +571,17 @@ Bob   ↔ Bob:   0 vs 0 → 1.0
 score = (1.0 + 1.0) / 2 = 1.0
 ```
 
-Charlie does not contribute because the unmatched field contains no `.d`. If there are no fields at all on either side of a group, cardinality is considered correct (`0 vs 0`) and produces a score of `1.0`.
+Charlie does not contribute because the unmatched field contains no `.d`. If there are no field occurrences on either side, cardinality is considered correct (`0 vs 0`) and produces a score of `1.0`.
 
 #### Aggregation
 
-Each selected field or subfield produces a score. For standard fields, this score is obtained directly from the global cardinality comparison. For person and corporate fields, the score for a selected subfield is the mean of its mapped and applicable unmatched occurrence comparisons:
+Each selected field or subfield produces a score. For standard fields, this score is obtained directly from the global cardinality comparison. For mapped fields, the score for a selected subfield is the mean of its mapped and applicable unmatched occurrence comparisons:
 
 ```text
 subfield score = sum of occurrence comparison scores / number of occurrence comparisons
 ```
 
-The method score is calcilated as the mean of all selected field and subfield scores.
+The method score is calculated as the mean of all selected field and subfield scores.
 
 **Requires:** gold or platinum
 
