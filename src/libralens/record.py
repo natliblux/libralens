@@ -23,7 +23,6 @@ class Record:
 
     def parse_fields(self) -> None:
 
-        self.zero_zero_eight = None
         self.title = None
         self.sub_title = None
         self.contributors = None
@@ -59,9 +58,7 @@ class Record:
 
         for field in self.fields:
             tag = field["tag"]
-            if tag == "008":
-                self.zero_zero_eight = field["value"]
-            elif tag == "020":
+            if tag == "020":
                 self.isbn_raw = next((s["value"] for s in field["subfields"] if s["code"] == "a"), None)
                 self.isbn_normalized = self.normalize_isbn(self.isbn_raw)
                 self.isbn_variants = self.get_isbn_variants(self.isbn_raw)
@@ -158,7 +155,7 @@ class Record:
             # MARC controlfields are 00X
             if tag.startswith("00"):
                 value = line[4:].strip()
-                self.fields.append({"tag": tag, "value": value})
+                self.fields.append(self.parse_008(value) if tag == "008" else {"tag": tag, "value": value})
 
             else:
                 if len(line) < 6:
@@ -203,10 +200,8 @@ class Record:
                 continue
 
             if field.tag == "controlfield":
-                self.fields.append({
-                    "tag": tag,
-                    "value": (field.text or "").strip()
-                })
+                value = (field.text or "").strip()
+                self.fields.append(self.parse_008(value) if tag == "008" else {"tag": tag, "value": value})
 
             elif field.tag == "datafield":
                 relevant_subfields = RELEVANT_FIELDS[tag]
@@ -230,6 +225,15 @@ class Record:
                     })
 
                 self.fields.append(parsed_field)
+
+    def parse_008(self, value: str) -> dict:
+
+        subfields = []
+        for positions in RELEVANT_FIELDS["008"]:
+            start, end = map(int, positions.split("-"))
+            if len(value) > end:
+                subfields.append({"code": positions, "value": value[start:end + 1]})
+        return {"tag": "008", "subfields": subfields, "value": value}
 
     def repair_missing_subfield_dollars(self, content, allowed_subfields):
 

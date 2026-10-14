@@ -6,7 +6,7 @@ class SubfieldCardinality(BaseMethod):
     name = "subfield-cardinality"
 
     supported_fields = {
-        "008": (),
+        "008": ("00-05", "35-37"),
         "020": ("a",),
         "041": ("a",),
         "100": ("a", "b", "d", "0", "e", "4"),
@@ -69,35 +69,16 @@ class SubfieldCardinality(BaseMethod):
             if tag in MAPPED_FIELDS:
                 continue
 
-            if tag == "008":
-
-                eval_values = self.get_field_values(eval_record, tag)
-                reference_values = self.get_field_values(reference_record, tag)
-
+            for code in sub_fields:
+                eval_values = self.get_subfield_values(eval_record, {tag}, code)
+                reference_values = self.get_subfield_values(reference_record, {tag}, code)
                 comparison = self.create_comparison(eval_values, reference_values)
-
                 comparisons.append({
                     "fields": [tag],
-                    "subfield": None,
+                    "subfield": code,
                     "score": comparison["score"],
                     "comparisons": [comparison],
                 })
-
-            else:
-
-                for code in sub_fields:
-
-                    eval_values = self.get_subfield_values(eval_record, {tag}, code)
-                    reference_values = self.get_subfield_values(reference_record, {tag}, code)
-
-                    comparison = self.create_comparison(eval_values, reference_values)
-
-                    comparisons.append({
-                        "fields": [tag],
-                        "subfield": code,
-                        "score": comparison["score"],
-                        "comparisons": [comparison],
-                    })
 
     def compare_mapped_groups(self, eval_record, reference_record, mapping, fields, comparisons) -> None:
 
@@ -189,10 +170,6 @@ class SubfieldCardinality(BaseMethod):
             return 1.0
 
         return min(eval_count, reference_count) / max(eval_count, reference_count)
-
-    @staticmethod
-    def get_field_values(record, tag) -> list[str]:
-        return [field["value"] for field in record.fields if field["tag"] == tag]
 
     @staticmethod
     def get_subfield_values(record, tags, code) -> list[str]:

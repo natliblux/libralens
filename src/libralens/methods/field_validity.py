@@ -8,7 +8,7 @@ class FieldValidityMethod(BaseMethod):
     name = "field-validity"
 
     supported_fields = {
-        "008": (),
+        "008": ("00-05", "35-37"),
         "020": ("a",),
         "041": ("a",),
         "100": ("4",),
@@ -23,7 +23,7 @@ class FieldValidityMethod(BaseMethod):
         invalid = []
 
         if "008" in fields:
-            self.check_008(doc.eval, valid, invalid)
+            self.check_008(doc.eval, fields["008"], valid, invalid)
 
         if "020" in fields and "a" in fields["020"]:
             self.check_isbn(doc.eval, valid, invalid)
@@ -77,45 +77,31 @@ class FieldValidityMethod(BaseMethod):
             else:
                 invalid.append(result)
 
-    def check_008(self, record, valid, invalid) -> None:
+    def check_008(self, record, positions, valid, invalid) -> None:
 
-        if record.zero_zero_eight is None:
-            return
-
-        if len(record.zero_zero_eight) < 38:
-            invalid.append({
-                "field": "008",
-                "part": "length",
-                "value": record.zero_zero_eight,
-                "reason": f"expected at least 38 characters, found {len(record.zero_zero_eight)}",
-            })
-            return
-
-        date = record.zero_zero_eight[0:6]
-
-        date_result = {
-            "field": "008",
-            "part": "00-05",
-            "value": date,
-        }
-
-        if self.is_valid_008_date(date):
-            valid.append(date_result)
-        else:
-            invalid.append(date_result)
-
-        language = record.zero_zero_eight[35:38]
-
-        language_result = {
-            "field": "008",
-            "part": "35-37",
-            "value": language,
-        }
-
-        if language in MARC_LANGUAGE_CODES:
-            valid.append(language_result)
-        else:
-            invalid.append(language_result)
+        for field in record.fields:
+            if field["tag"] != "008":
+                continue
+            for subfield in field["subfields"]:
+                code = subfield["code"]
+                value = subfield["value"]
+                if code not in positions:
+                    continue
+                result = {
+                    "field": "008",
+                    "part": code,
+                    "value": value,
+                }
+                if code == "00-05":
+                    is_valid = self.is_valid_008_date(value)
+                elif code == "35-37":
+                    is_valid = value in MARC_LANGUAGE_CODES
+                else:
+                    continue
+                if is_valid:
+                    valid.append(result)
+                else:
+                    invalid.append(result)
 
     def check_relators(self, record, tags, valid, invalid) -> None:
 
