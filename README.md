@@ -18,6 +18,9 @@ LibraLens is designed as a toolbox, allowing different evaluation methods and MA
   - [Documents](#documents)
   - [Methods](#methods)
   - [Fields](#fields)
+  - [Grouping](#grouping)
+  - [Mapping](#mapping)
+  - [Selections](#selections)
   - [Runs](#runs)
 - [Usage](#usage)
   - [Python Library](#python-library)
@@ -68,39 +71,66 @@ The basic unit evaluated by LibraLens is a document. A document can contain:
 
 Records can be provided as individual files or directories containing multiple files. LibraLens supports `.xml` and `.txt` formats for MARC records. Plain text can be provided as a `.txt` (text is read directly) or `.pdf` (LibraLens PDF text extraction) file. XML files may contain one or multiple records, while text files contain a single record. Corresponding eval, reference, and plain-text data is matched as described in [Document Matching](#document-matching).
 
-The selected evaluation **methods** define what the documents require. For example, `text-match` requires plain text, while comparison methods such as `edit-distance` require a gold or platinum reference record.
+The selected evaluation **methods** define what the documents require. For example, `text-match` requires plain text, while comparison methods such as `edit-distance` require a reference record (gold and/or platinum).
 
 ### Methods
 
-An evaluation consists of one or more methods. Each method evaluates a particular aspect of the record and returns a normalized score between `0.0` and `1.0`, or `None` when no applicable evaluation can be performed. If no methods are specified, LibraLens runs all available methods.
-
-Specific methods can be selected by passing a list of strings:
+An evaluation consists of one or more methods. Each method evaluates a particular aspect of the record and returns a normalized score between `0.0` and `1.0`, or `None` when no applicable evaluation can be performed. If no methods are specified, LibraLens runs all available methods. Specific methods can be selected by passing a list of strings:
 
 ```python
-methods=["text-match", "edit-distance", "field-validity"]
+methods=["edit-distance", "text-match"]
 ```
 
 Alternatively, from the command line:
 
 ```bash
---methods text-match edit-distance field-validity
+--methods edit-distance text-match
 ```
 
 ### Fields
 
-Fields can be limited globally to control which MARC fields and subfields are considered. If no fields are specified, each method uses all fields and subfields it supports. Complete fields are written using their MARC tag (e.g. `100`), while individual subfields use the dot notation (e.g. `245.a`):
+LibraLens supports a selection of MARC 21 fields and subfields, depending on the evaluation method. The complete list is available [here](#marc-scope). For controlfield `008`, LibraLens treats positions `00-05` and `35-37` as virtual subfields, which are handled like regular MARC subfields during evaluation.
+
+### Grouping
+
+The person fields `100/700` and the corporate fields `110/710` are each treated as one group, which allows related information to be evaluated together. For example, person names in `100` and `700` are treated as belonging to the same group, rather than as two separate categories.
+
+### Mapping
+
+For certain methods, LibraLens maps corresponding field occurrences between eval and reference records. Mapping applies to person (`100/700`), corporate (`110/710`), and `264` fields. Person and corporate mappings may cross MARC tags within their respective groups, while 264 occurrences are mapped only to other 264 occurrences.
+
+```text
+Eval:
+100 $a Alice
+700 $a Bob
+
+Reference:
+700 $a Alice
+100 $a Bob
+
+Mappings:
+100 Alice ↔ 700 Alice
+700 Bob   ↔ 100 Bob
+```
+
+Mapping allows evaluation methods to compare corresponding occurrences even when their order, cardinality, or for grouped fields, their MARC tags differ.
+
+### Selections
+
+Fields can be limited globally to control which MARC fields and subfields are considered. If no fields are specified, each method uses all fields and subfields it supports. Complete fields are selected using their MARC tag (e.g. `245`), while individual subfields use dot notation (e.g. `700.a`). Virtual subfields (`008`) use the same notation (e.g. `008.35-37`). For example:
 
 ```python
-fields=["100", "700", "245.a"]
+fields=["245", "700.a"]
 ```
 
 Alternatively, from the command line:
 
 ```bash
---fields 100 700 245.a
+--fields 245 700.a
 ```
 
-Selecting a complete field (e.g. `245`) means that every subfield of `245`, supported by the respective method, is considered. For grouped person (`100/700`) and corporate (`110/710`) fields, a selected subfield applies to the entire group, as described in [`Evaluation Principles`](#evaluation-principles). Unsupported fields or subfields are automatically ignored by LibraLens.
+Selecting a complete field (e.g. `245`) includes all subfields or position ranges supported by the respective method. For grouped person (`100/700`) and corporate (`110/710`) fields, selecting a subfield automatically includes the same subfield across the entire group (selecting `700.a` also selects `100.a`). Unsupported fields and subfields are automatically ignored by LibraLens.
+
 
 ### Runs
 
@@ -108,8 +138,8 @@ For more complex evaluations, different methods can use different field selectio
 
 ```python
 runs=[
-    Run(method="edit-distance", fields=["100", "700"]),
-    Run(method="text-match", fields=["245.a"])
+    Run(method="edit-distance", fields=["245", "700.a"]),
+    Run(method="text-match", fields=["020.a"])
 ]
 ```
 
@@ -120,11 +150,11 @@ Alternatively, from the command line, runs are defined in a JSON file:
     "runs": [
         {
             "method": "edit-distance",
-            "fields": ["100", "700"]
+            "fields": ["245", "700.a"]
         },
         {
             "method": "text-match",
-            "fields": ["245.a"]
+            "fields": ["020.a"]
         }
     ]
 }
@@ -329,28 +359,7 @@ LibraLens currently provides the following nine methods:
 | [`subfield-cardinality`](#method-subfield-cardinality) | Reference Record | Compares the cardinality of selected fields and subfields in the eval and reference records. |
 | [`record-usability`](#method-record-usability) | Reference Record and [LLM](#llm-configuration) | Applies binary minimum-quality criteria to determine whether the record is usable. |
 
-### Evaluation Principles
-
-* **Referencing**  
-  Methods requiring a reference record can use gold, platinum, or both. If both gold and platinum records are supplied, the method is evaluated independently against each reference and the two resulting reference scores are averaged.
-* **Grouping**  
-  LibraLens treats the person fields `100/700` as one group and the corporate fields `110/710` as another group. Selecting a subfield from either field in the group automatically selects the same subfield for the entire group (e.g. selecting `100.0` selects `.0` across both `100` and `700`).
-* **Mapping**  
-  For certain methods, LibraLens maps corresponding field occurrences between eval and reference records. This applies to person (`100/700`), corporate (`110/710`), and `264` fields. Person and corporate mappings may cross MARC tags within their respective groups, while `264` occurrences are mapped only to other `264` occurrences. For example:
-
-``` text
-Eval:
-100 $a Alice
-700 $a Bob
-
-Reference:
-700 $a Alice
-100 $a Bob
-
-Mappings:
-100 Alice ↔ 700 Alice
-700 Bob   ↔ 100 Bob
-```
+Methods requiring a reference record can use gold, platinum, or both. If both are supplied, the method is evaluated independently against each reference, and the two resulting scores are averaged.
 
 ### Method: Field Validity
 
@@ -358,8 +367,8 @@ Mappings:
 
 The currently implemented checks are:
 
-- `008` positions `00-05` must contain a valid six-digit date
-- `008` positions `35-37` must contain a valid language code
+- `008.00-05` must contain a valid six-digit date
+- `008.35-37` must contain a valid language code
 - `020.a` must contain a valid ISBN-10 or ISBN-13, including a valid checksum
 - `041.a` values must be valid language codes
 - `.4` values in person and corporate name fields must be valid relator codes
@@ -376,7 +385,7 @@ valid checks / all checks
 
 | Field | Subfields |
 |---|---|
-| `008` |      |
+| `008` | `.00-05` `.35-37` |
 | `020` | `.a` |
 | `041` | `.a` |
 | `100` | `.4` |
@@ -513,7 +522,7 @@ The method score is the mean of all applicable comparison scores.
 
 `subfield-cardinality` evaluates whether the eval record contains the same amount of selected MARC data as a gold or platinum reference record.
 
-The method operates on the subfield level (except for controlfields) and considers only cardinality. For example, if both records contain exactly one `245.a`, the score equals `1.0`. In general, the score is computed as the ratio between the smaller and larger count. If both counts are `0`, the score is `1.0` (subfield absence can be desired). The actual content of the values does not affect the score and can instead be evaluated using other methods. 
+The method operates on the subfield level, including the virtual subfields of `008`, and considers only cardinality. For example, if both records contain exactly one `245.a`, the score equals `1.0`. In general, the score is computed as the ratio between the smaller and larger count. If both counts are `0`, the score is `1.0` (subfield absence can be desired). The actual content of the values does not affect the score and can instead be evaluated using other methods. 
 
 #### Standard fields
 
@@ -589,7 +598,7 @@ The method score is calculated as the mean of all selected field and subfield sc
 
 | Field | Subfields |
 |---|---|
-| `008` | |
+| `008` | `.00-05` `.35-37` |
 | `020` | `.a` |
 | `041` | `.a` |
 | `100` | `.a` `.b` `.d` `.0` `.e` `.4` |
@@ -700,7 +709,7 @@ The API key can be omitted, depending on the used model (e.g. locally hosted).
 Aggregating all methods, LibraLens currently supports the following MARC 21 fields and subfields:
 
 ```
-008
+008.00-05, 008.35-37
 020.a
 041.a
 100.a, 100.b, 100.d, 100.0, 100.e, 100.4
