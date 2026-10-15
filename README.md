@@ -31,6 +31,7 @@ LibraLens is designed as a toolbox, allowing different evaluation methods and MA
   - [Text Match](#method-text-match)
   - [Common Substring](#methods-value-comparisons)
   - [Edit Distance](#methods-value-comparisons)
+  - [Exact Match](#methods-value-comparisons)
   - [F1 Score](#methods-set-comparisons)
   - [Precision Score](#methods-set-comparisons)
   - [Recall Score](#methods-set-comparisons)
@@ -345,7 +346,7 @@ Detailed diagnostics can be accessed on disk by passing the `--output` option.
 
 ## Evaluation Methods
 
-LibraLens currently provides the following nine methods:
+LibraLens currently provides the following ten methods:
 
 | Method | Requires | Purpose |
 |---|---|---|
@@ -353,6 +354,7 @@ LibraLens currently provides the following nine methods:
 | [`text-match`](#method-text-match) | Plain Text | Matches strings from the eval record with the underlying PDF plain text. |
 | [`common-substring`](#methods-value-comparisons) | Reference Record | Compares the eval record to the reference record using the longest common substring. |
 | [`edit-distance`](#methods-value-comparisons) | Reference Record | Compares the eval record to the reference record using edit distance. |
+| [`exact-match`](#methods-value-comparisons) | Reference Record | Compares the eval record to the reference record using exact equality. |
 | [`f1-score`](#methods-set-comparisons) | Reference Record | Computes the F1 score between the eval and reference record for values with unambiguous equality. |
 | [`precision-score`](#methods-set-comparisons) | Reference Record | Computes the precision score between the eval and reference record for values with unambiguous equality. |
 | [`recall-score`](#methods-set-comparisons) | Reference Record | Computes the recall score between the eval and reference record for values with unambiguous equality. |
@@ -442,15 +444,17 @@ matched values / all checked values
 
 ### Methods: Value Comparisons
 
-The methods `common-substring` and `edit-distance` compare strings from the eval record with corresponding strings from a gold or platinum reference record. Each string comparison produces a normalized similarity score between `0.0` and `1.0`:
+The methods `common-substring`, `edit-distance`, and `exact-match` compare strings from the eval record with corresponding strings from a gold or platinum reference record. Each string comparison produces a normalized score between `0.0` and `1.0`:
 
 -   `common-substring` uses the length of the longest continuous substring shared by both values.
 -   `edit-distance` uses the normalized Levenshtein similarity.
+-   `exact-match` uses strict string equality without normalization.
 
-For both methods, **only values for which a comparison can be established contribute to the score**. Missing, extra, or otherwise unmatched values are omitted rather than assigned a score of `0.0`. The methods therefore measure the similarity of comparable values rather than record completeness or cardinality. Differences in cardinality can instead be evaluated using [`subfield-cardinality`](#method-subfield-cardinality).
+For all three methods, only values for which a comparison can be established contribute to the score. Missing, extra, or otherwise unmatched values are omitted rather than assigned a score of `0.0`. The methods therefore measure the similarity or equality of comparable values rather than record completeness or cardinality. Differences in cardinality can instead be evaluated using [`subfield-cardinality`](#method-subfield-cardinality).
 
+#### Common Substring and Edit Distance
 
-For person and corporate fields, `.a` and `.b` are concatenated into a single string before the similarity is calculated. The available values are concatenated in `.a + .b` order. For example:
+For person and corporate fields, `.a` and `.b` are concatenated into a single string before the similarity is calculated, for example:
 
 ``` text
 710 $a Example Organization $b Research Department
@@ -464,14 +468,6 @@ Example Organization Research Department
 
 For field `245`, selected subfields are compared individually when a value is available in both records. When both `.a` and `.b` are selected, an additional comparison of the combined `.a + .b` title is performed. `490.a` is compared individually as well. For field `264`, subfields `.a`, `.b`, and `.c` are compared individually within corresponding mapped occurrences.
 
-The method score is:
-
-``` text
-sum of applicable comparison scores / number of applicable comparisons
-```
-
-**Requires:** gold or platinum
-
 **Supports:**
 
 | Field | Subfields |
@@ -483,6 +479,33 @@ sum of applicable comparison scores / number of applicable comparisons
 | `490` | `.a` |
 | `700` | `.a` `.b` |
 | `710` | `.a` `.b` |
+
+#### Exact Match
+
+`exact-match` compares individual subfield values using strict string equality, without normalization. Differences in capitalization, whitespace, or punctuation therefore result in a score of `0.0`. Unlike the other value-comparison methods, it does not concatenate any subfields.
+
+**Supports:**
+
+| Field | Subfields |
+|---|---|
+| `008` | `.00-05` `.35-37` |
+| `020` | `.a` |
+| `100` | `.d` `.0` `.e` `.4` |
+| `110` | `.d` `.0` `.e` `.4` |
+| `264` | `.c` |
+| `300` | `.a` `.b` |
+| `700` | `.d` `.0` `.e` `.4` |
+| `710` | `.d` `.0` `.e` `.4` |
+
+#### Aggregation
+
+For all three methods, the method score is:
+
+``` text
+sum of applicable comparison scores / number of applicable comparisons
+```
+
+**Requires:** gold or platinum
 
 [↑ Back to all evaluation methods](#evaluation-methods)
 

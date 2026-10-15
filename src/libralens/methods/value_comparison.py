@@ -5,17 +5,8 @@ from ..funcs import join_subfields
 
 class ValueComparisonMethod(BaseMethod):
 
-    supported_fields = {
-        "100": ("a", "b"),
-        "110": ("a", "b"),
-        "245": ("a", "b", "c", "d"),
-        "264": ("a", "b", "c"),
-        "490": ("a",),
-        "700": ("a", "b"),
-        "710": ("a", "b")
-    }
-
     requires_gold_or_platinum = True
+    combine_names = True
 
     def run_doc(self, doc, fields, llm=None):
 
@@ -38,26 +29,20 @@ class ValueComparisonMethod(BaseMethod):
 
         comparisons = []
 
+        for tag, sub_fields in fields.items():
+
+            if tag in GROUPED_FIELDS:
+                continue
+
+            if tag == "264":
+                self.compare_mapped_fields(eval_record, reference_record, mapping, {tag}, sub_fields, comparisons)
+            else:
+                self.compare_standard_field(eval_record, reference_record, tag, sub_fields, comparisons)
+
         grouped_fields = GROUPED_FIELDS & set(fields)
 
         if grouped_fields:
-            self.compare_mapped_names(
-                eval_record,
-                reference_record,
-                mapping,
-                fields,
-                grouped_fields,
-                comparisons
-            )
-
-        if "245" in fields:
-            self.compare_245(eval_record, reference_record, fields["245"], comparisons)
-
-        if "264" in fields:
-            self.compare_264(eval_record, reference_record, mapping, fields["264"], comparisons)
-
-        if "490" in fields:
-            self.compare_490(eval_record, reference_record, fields["490"], comparisons)
+            self.compare_mapped_fields(eval_record, reference_record, mapping, grouped_fields, fields, comparisons)
 
         scores = [comparison["score"] for comparison in comparisons]
 
@@ -66,138 +51,86 @@ class ValueComparisonMethod(BaseMethod):
             "comparisons": comparisons,
         }
 
-    def compare_mapped_names(self, eval_record, reference_record, mapping, fields, tags, comparisons) -> None:
+    def compare_standard_field(self, eval_record, reference_record, tag, sub_fields, comparisons) -> None:
 
-        for eval_field in eval_record.fields:
-
-            tag = eval_field["tag"]
-            if tag not in tags:
-                continue
-            if not fields[tag] & {"a", "b"}:
-                continue
-            eval_id = eval_field["id"]
-            if eval_id not in mapping:
-                continue
-
-            reference_field = reference_record.fields[mapping[eval_id]]
-            eval_text = join_subfields(eval_field, {"a", "b"})
-            reference_text = join_subfields(reference_field, {"a", "b"})
-
-            if not eval_text or not reference_text:
-                continue
-
-            comparisons.append({
-                "eval_field": tag,
-                "reference_field": reference_field["tag"],
-                "sub_fields": ["a", "b"],
-                "eval_text": eval_text,
-                "reference_text": reference_text,
-                "score": self.compare_strings(eval_text, reference_text),
-            })
-
-    def compare_264(self, eval_record, reference_record, mapping, sub_fields, comparisons) -> None:
-
-        for eval_field in eval_record.fields:
-
-            if eval_field["tag"] != "264":
-                continue
-
-            eval_id = eval_field["id"]
-            if eval_id not in mapping:
-                continue
-
-            reference_field = reference_record.fields[mapping[eval_id]]
-            if reference_field["tag"] != "264":
-                continue
-
-            for code in ["a", "b", "c"]:
-
-                if code not in sub_fields:
-                    continue
-
-                eval_text = self.get_subfield(eval_field, code)
-                reference_text = self.get_subfield(reference_field, code)
-
-                if eval_text is None or reference_text is None:
-                    continue
-
-                comparisons.append({
-                    "eval_field": "264",
-                    "reference_field": "264",
-                    "sub_fields": [code],
-                    "eval_text": eval_text,
-                    "reference_text": reference_text,
-                    "score": self.compare_strings(eval_text, reference_text),
-                })
-
-    def compare_490(self, eval_record, reference_record, sub_fields, comparisons) -> None:
-
-        if "a" not in sub_fields:
-            return
-
-        eval_field = self.get_field(eval_record, "490")
-        reference_field = self.get_field(reference_record, "490")
+        eval_field = self.get_field(eval_record, tag)
+        reference_field = self.get_field(reference_record, tag)
 
         if eval_field is None or reference_field is None:
             return
 
-        eval_text = self.get_subfield(eval_field, "a")
-        reference_text = self.get_subfield(reference_field, "a")
+        for code in sub_fields:
+            self.compare_subfield(eval_field, reference_field, code, comparisons)
+
+        if self.combine_names and tag == "245" and {"a", "b"} <= sub_fields:
+            self.compare_combined(eval_field, reference_field, comparisons)
+
+    def compare_mapped_fields(self, eval_record, reference_record, mapping, tags, sub_fields, comparisons) -> None:
+
+        for eval_field in eval_record.fields:
+
+            tag = eval_field["tag"]
+
+            if tag not in tags:
+                continue
+
+            eval_id = eval_field["id"]
+
+            if eval_id not in mapping:
+                continue
+
+            reference_field = reference_record.fields[mapping[eval_id]]
+
+            if reference_field["tag"] not in tags:
+                continue
+
+            if tag in GROUPED_FIELDS:
+                selected = sub_fields[tag]
+
+                if self.combine_names:
+                    if selected & {"a", "b"}:
+                        self.compare_combined(eval_field, reference_field, comparisons)
+                else:
+                    for code in selected:
+                        self.compare_subfield(eval_field, reference_field, code, comparisons)
+
+            else:
+                for code in sub_fields:
+                    self.compare_subfield(eval_field, reference_field, code, comparisons)
+
+    def compare_subfield(self, eval_field, reference_field, code, comparisons) -> None:
+
+        eval_text = self.get_subfield(eval_field, code)
+        reference_text = self.get_subfield(reference_field, code)
 
         if eval_text is None or reference_text is None:
             return
 
         comparisons.append({
-            "eval_field": "490",
-            "reference_field": "490",
-            "sub_fields": ["a"],
+            "eval_field": eval_field["tag"],
+            "reference_field": reference_field["tag"],
+            "sub_fields": [code],
             "eval_text": eval_text,
             "reference_text": reference_text,
             "score": self.compare_strings(eval_text, reference_text),
         })
 
-    def compare_245(self, eval_record, reference_record, sub_fields, comparisons) -> None:
+    def compare_combined(self, eval_field, reference_field, comparisons) -> None:
 
-        eval_field = self.get_field(eval_record, "245")
-        reference_field = self.get_field(reference_record, "245")
+        eval_text = join_subfields(eval_field, {"a", "b"})
+        reference_text = join_subfields(reference_field, {"a", "b"})
 
-        if eval_field is None or reference_field is None:
+        if not eval_text or not reference_text:
             return
 
-        for code in ["a", "b", "c", "d"]:
-
-            if code not in sub_fields:
-                continue
-
-            eval_text = self.get_subfield(eval_field, code)
-            reference_text = self.get_subfield(reference_field, code)
-
-            if eval_text is None or reference_text is None:
-                continue
-
-            comparisons.append({
-                "eval_field": "245",
-                "reference_field": "245",
-                "sub_fields": [code],
-                "eval_text": eval_text,
-                "reference_text": reference_text,
-                "score": self.compare_strings(eval_text, reference_text),
-            })
-
-        if {"a", "b"} <= sub_fields:
-
-            eval_text = join_subfields(eval_field, {"a", "b"})
-            reference_text = join_subfields(reference_field, {"a", "b"})
-
-            if eval_text and reference_text:
-                comparisons.append({
-                    "eval_field": "245",
-                    "reference_field": "245",
-                    "sub_fields": ["a", "b"],
-                    "eval_text": eval_text,
-                    "reference_text": reference_text,
-                    "score": self.compare_strings(eval_text, reference_text),
-                })
+        comparisons.append({
+            "eval_field": eval_field["tag"],
+            "reference_field": reference_field["tag"],
+            "sub_fields": ["a", "b"],
+            "eval_text": eval_text,
+            "reference_text": reference_text,
+            "score": self.compare_strings(eval_text, reference_text),
+        })
 
     @abstractmethod
     def compare_strings(self, eval_text: str, reference_text: str) -> float:
