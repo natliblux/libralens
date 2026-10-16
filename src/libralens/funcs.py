@@ -1,10 +1,67 @@
 import xml.etree.ElementTree as ET
 import re
 import unicodedata
-import json
-from importlib.resources import files
 import fitz
 from pathlib import Path
+from pathlib import Path
+import fitz
+from .constants import PDF_N_PAGES, PDF_LARGE_IMG_DIM, PDF_IMAGE_SCALE
+
+def compute_scores(results: list, methods: list) -> tuple:
+
+    # per-document scores
+    document_scores = {}
+
+    for result in results:
+        scores = [
+            method_result["score"]
+            for method_result in result["methods"].values()
+            if method_result["score"] is not None
+        ]
+
+        document_score = sum(scores) / len(scores) if scores else None
+
+        result["score"] = document_score
+        document_scores[result["id"]] = document_score
+
+    # per-method scores
+    method_scores = {}
+
+    for method in methods:
+        scores = [
+            result["methods"][method]["score"]
+            for result in results
+            if method in result["methods"] and result["methods"][method]["score"] is not None
+        ]
+
+        if scores:
+            method_scores[method] = sum(scores) / len(scores)
+
+    # overall score
+    scores = [
+        score
+        for score in document_scores.values()
+        if score is not None
+    ]
+
+    overall_score = sum(scores) / len(scores) if scores else None
+
+    return document_scores, method_scores, overall_score
+
+def extract_pdf_images(pdf_path: Path, output_dir: Path) -> None:
+
+    with fitz.open(pdf_path) as pdf:
+        n_pages = len(pdf)
+        if n_pages == 0:
+            raise ValueError(f"pdf contains zero pages: {pdf_path}")
+
+        indices = sorted(set(range(min(PDF_N_PAGES, n_pages))) | set(range(max(0, n_pages - PDF_N_PAGES), n_pages)))
+
+        for j, i in enumerate(indices):
+            page = pdf[i]
+            scale = min(PDF_IMAGE_SCALE, PDF_LARGE_IMG_DIM / max(page.rect.width, page.rect.height))
+            pix = page.get_pixmap(matrix=fitz.Matrix(scale, scale), colorspace=fitz.csRGB, alpha=False)
+            pix.save(output_dir / f"{j:02d}.png")
 
 def extract_pdf_text(pdf_path: str | Path) -> str:
 
@@ -17,13 +74,6 @@ def extract_pdf_text(pdf_path: str | Path) -> str:
     text = re.sub(r"\n{3,}", "\n\n", text)
     text = re.sub(r"\n +", "\n", text)
     return text.strip()
-
-def load_codes(filename: str) -> set[str]:
-
-    path = files("libralens.data").joinpath(filename)
-
-    with path.open("r", encoding="utf-8") as file:
-        return set(json.load(file))
 
 def record_to_xml(record) -> str:
 

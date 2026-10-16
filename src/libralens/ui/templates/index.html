@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LibraLens — Human Annotation</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/app.js" defer></script>
+</head>
+<body>
+
+<div class="sticky-panel">
+    <header>
+        <div class="brand">LibraLens</div>
+
+        <div class="navigation">
+            <button id="previous">← Previous</button>
+            <span id="progress"></span>
+            <button id="save-next" class="primary">Next →</button>
+        </div>
+    </header>
+
+    <section class="document-rating">
+        <div id="document-rating"></div>
+    </section>
+
+    <!-- Source image preview will go here later -->
+</div>
+
+<main>
+    <section>
+        <div class="document-content">
+            <div class="images-column">
+                <h2 class="column-title">IMAGES</h2>
+                <div id="images"></div>
+            </div>
+
+            <div id="records" class="records"></div>
+        </div>
+    </section>
+</main>
+
+</body>
+</html>

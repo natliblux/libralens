@@ -8,6 +8,7 @@ from .precision_score import PrecisionMethod
 from .recall_score import RecallMethod
 from .subfield_cardinality import SubfieldCardinality
 from .record_usability import RecordUsabilityMethod
+from .human_annotation import HumanAnnotationMethod
 
 METHOD_CLASSES = [
     FieldValidityMethod,
@@ -19,7 +20,8 @@ METHOD_CLASSES = [
     PrecisionMethod,
     RecallMethod,
     SubfieldCardinality,
-    RecordUsabilityMethod
+    RecordUsabilityMethod,
+    HumanAnnotationMethod
 ]
 
 METHODS = {

@@ -16,8 +16,12 @@ class Record:
         elif input_format == InputFormat.TEXT:
             self.parse_text(data=data)
 
+        self.fields.sort(key=lambda field: field["tag"])
+
         for i, field in enumerate(self.fields):
             field["id"] = i
+            for j, subfield in enumerate(field.get("subfields", [])):
+                subfield["id"] = j
 
         self.parse_fields()
 

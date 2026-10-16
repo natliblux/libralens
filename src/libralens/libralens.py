@@ -1,13 +1,15 @@
 from pathlib import Path
+from .ui import launch
 from .run import Run
 import shutil
-from .funcs import record_to_xml
+from .funcs import record_to_xml, extract_pdf_images, compute_scores
 import json
 from .constants import FIELD_GROUPS
 from .methods import METHODS
 from .loader import load_documents
 from .llm import LLM
 from .plot import create_results_plot
+from .annotation import AnnotationSession
 
 class LibraLens:
 
@@ -20,6 +22,7 @@ class LibraLens:
         gold: str | Path | None = None,
         platinum: str | Path | None = None,
         text: str | Path | None = None,
+        pdf: str | Path | None = None,
         output: str | Path | None = None,
         verbose: bool = False
     ):
@@ -28,6 +31,7 @@ class LibraLens:
         self.gold = gold
         self.platinum = platinum
         self.text = text
+        self.pdf = pdf
         self.output = Path(output) if output is not None else None
         self.verbose = verbose
 
@@ -65,36 +69,39 @@ class LibraLens:
         self.method_instances = {run.method: METHODS[run.method]() for run in self.runs}
         self._validate_requirements()
         self.llm = (LLM() if any(self.method_instances[run.method].requires_llm for run in self.runs) else None)
-        self.documents = load_documents(self.eval, self.gold, self.platinum, self.text)
+        self.documents = load_documents(self.eval, self.gold, self.platinum, self.text, self.pdf)
         self.score = None
         self.method_scores = {}
         self.document_scores = {}
         self.results = []
 
-    def evaluate(self) -> list[dict]:
+    def evaluate(self, open_ui: bool = True) -> None:
 
         if self.verbose:
             self._print_info()
 
-        self.results = [
-            {"id": i, "methods": {}}
-            for i in range(len(self.documents))
-        ]
+        self.results = [{"id": i, "methods": {}} for i in range(len(self.documents))]
 
         method_width = max(len(run.method) for run in self.runs)
 
         for run in self.runs:
 
             method = self.method_instances[run.method]
-            method_results = method.run(docs=self.documents, fields=run.fields, llm=self.llm, verbose=self.verbose, desc=f"{run.method:<{method_width}}")
+            if method.deferred:
+                continue
 
+            method_results = method.run(docs=self.documents, fields=run.fields, llm=self.llm, verbose=self.verbose, desc=f"{run.method:<{method_width}}")
             for i, result in enumerate(method_results):
                 self.results[i]["methods"][run.method] = result
 
         self._compute_scores()
 
         if self.output:
-            self._write_results()
+            self._write_output()
+            if "human-annotation" in self.methods:
+                AnnotationSession(self.output).create(self.runs, len(self.documents))
+                if open_ui:
+                    self.annotate(self.output)
         if self.verbose:
             self._print_results()
 
@@ -102,41 +109,7 @@ class LibraLens:
 
     def _compute_scores(self) -> None:
 
-        # per-document scores
-        self.document_scores = {}
-
-        for result in self.results:
-            scores = [
-                method_result["score"]
-                for method_result in result["methods"].values()
-                if method_result["score"] is not None
-            ]
-
-            document_score = sum(scores) / len(scores) if scores else None
-
-            result["score"] = document_score
-            self.document_scores[result["id"]] = document_score
-
-        # per-method scores
-        self.method_scores = {}
-
-        for method in self.methods:
-            scores = [
-                result["methods"][method]["score"]
-                for result in self.results
-                if result["methods"][method]["score"] is not None
-            ]
-
-            self.method_scores[method] = sum(scores) / len(scores) if scores else None
-
-        # overall score
-        scores = [
-            score
-            for score in self.document_scores.values()
-            if score is not None
-        ]
-
-        self.score = sum(scores) / len(scores) if scores else None
+        self.document_scores, self.method_scores, self.score = compute_scores(self.results, self.methods)
 
     def _format_fields(self, fields) -> str:
 
@@ -161,6 +134,8 @@ class LibraLens:
             types.append("platinum")
         if self.text is not None:
             types.append("text")
+        if self.pdf is not None:
+            types.append("pdf")
 
         print(f"{len(self.documents)} {documents_str}")
         print(f"  {', '.join(types)}")
@@ -190,10 +165,7 @@ class LibraLens:
         score_str = f"{self.score:.3f}" if self.score is not None else f"{'n/a':>5}"
         print(f"  {score_str} overall")
 
-    def _write_record(self, record, path: Path) -> None:
-        path.write_text(record_to_xml(record), encoding="utf-8")
-
-    def _write_results(self) -> None:
+    def _write_output(self) -> None:
 
         if self.output.exists():
             shutil.rmtree(self.output)
@@ -208,7 +180,8 @@ class LibraLens:
             json.dump(self.results, file, indent=4, ensure_ascii=False)
 
         # plot
-        create_results_plot(results=self.results, methods=self.methods, overall_score=self.score, output_path=self.output / "results.png")
+        completed_methods = [method for method in self.methods if method in self.method_scores]
+        create_results_plot(results=self.results, methods=completed_methods, overall_score=self.score, output_path=self.output / "results.png")
 
         # document data
         width = len(str(len(self.documents) - 1))
@@ -217,19 +190,28 @@ class LibraLens:
             document_dir = documents_dir / f"{i:0{width}d}"
             document_dir.mkdir()
 
-            self._write_record(document.eval, document_dir / "eval.xml")
-
+            (document_dir / "eval.xml").write_text(record_to_xml(document.eval), encoding="utf-8")
             if document.gold is not None:
-                self._write_record(document.gold, document_dir / "gold.xml")
+                (document_dir / "gold.xml").write_text(record_to_xml(document.gold), encoding="utf-8")
             if document.platinum is not None:
-                self._write_record(document.platinum, document_dir / "platinum.xml")
+                (document_dir / "platinum.xml").write_text(record_to_xml(document.platinum), encoding="utf-8")
             if document.text is not None:
                 (document_dir / "text.txt").write_text(document.text, encoding="utf-8")
+            if document.pdf is not None:
+                images_dir = document_dir / "images"
+                images_dir.mkdir()
+                extract_pdf_images(document.pdf, images_dir)
 
     def _validate_output(self) -> None:
 
-        if self.output is not None and self.output.exists() and not self.output.is_dir():
+        if self.output is None:
+            return
+
+        if self.output.exists() and not self.output.is_dir():
             raise ValueError(f"output path is not a directory: {self.output}")
+
+        if (self.output / "session.json").exists() or (self.output / "annotations.json").exists():
+            raise ValueError(f"the following output directory cannot be overwritten: {self.output}")
 
     def _validate_requirements(self) -> None:
 
@@ -247,6 +229,12 @@ class LibraLens:
 
             if method.requires_text and self.text is None:
                 raise ValueError(f"method '{method.name}' requires plain text")
+
+            if method.requires_pdf and self.pdf is None:
+                raise ValueError(f"method '{method.name}' requires pdf documents")
+
+            if method.requires_output and self.output is None:
+                raise ValueError(f"method '{method.name}' requires an output directory")
 
     def _validate_runs(self) -> None:
 
@@ -299,3 +287,7 @@ class LibraLens:
                         resolved.setdefault(field, set()).add(subfield)
 
         return resolved
+
+    @staticmethod
+    def annotate(output: str | Path) -> None:
+        launch(output)

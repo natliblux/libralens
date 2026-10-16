@@ -10,6 +10,9 @@ class BaseMethod(ABC):
     requires_gold_or_platinum = False
     requires_text = False
     requires_llm = False
+    requires_pdf = False
+    requires_output = False
+    deferred = False
 
     def run(self, docs, fields, llm=None, verbose=False, desc=None):
 

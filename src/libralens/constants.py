@@ -1,4 +1,10 @@
-from .funcs import load_codes
+from importlib.resources import files
+import json
+
+def load_codes(filename: str) -> set[str]:
+    path = files("libralens.data").joinpath(filename)
+    with path.open("r", encoding="utf-8") as file:
+        return set(json.load(file))
 
 RELEVANT_FIELDS = {
     "008": ("00-05", "35-37"),
@@ -28,6 +34,17 @@ MAPPING_NAMES_IND_WEIGHT = 0.0
 LLM_URL_ENV = "LIBRALENS_LLM_URL"
 LLM_MODEL_ENV = "LIBRALENS_LLM_MODEL"
 LLM_KEY_ENV = "LIBRALENS_LLM_KEY"
+
+PDF_N_PAGES = 7
+PDF_LARGE_IMG_DIM = 1000
+PDF_IMAGE_SCALE = 3
+
+HUMAN_RATINGS = {
+    "excellent": 1.0,
+    "good": 2 / 3,
+    "ok": 1 / 3,
+    "bad": 0.0
+}
 
 MARC_LANGUAGE_CODES = load_codes("language_codes.json")
 MARC_RELATOR_CODES = load_codes("relator_codes.json")

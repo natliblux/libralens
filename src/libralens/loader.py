@@ -82,12 +82,14 @@ def load_documents(
     gold_path: str | Path | None = None,
     platinum_path: str | Path | None = None,
     text_path: str | Path | None = None,
+    pdf_path: str | Path | None = None,
 ) -> list[Document]:
 
     eval_path = Path(eval_path)
     gold_path = Path(gold_path) if gold_path is not None else None
     platinum_path = Path(platinum_path) if platinum_path is not None else None
     text_path = Path(text_path) if text_path is not None else None
+    pdf_path = Path(pdf_path) if pdf_path is not None else None
 
     if eval_path.is_file():
 
@@ -95,7 +97,7 @@ def load_documents(
             raise ValueError("when eval is a file, gold must also be a file")
         if platinum_path is not None and not platinum_path.is_file():
             raise ValueError("when eval is a file, platinum must also be a file")
-        return pair_files(eval_path, gold_path, platinum_path, text_path)
+        return pair_files(eval_path, gold_path, platinum_path, text_path, pdf_path)
 
     if eval_path.is_dir():
 
@@ -105,6 +107,8 @@ def load_documents(
             raise ValueError("when eval is a directory, platinum must also be a directory")
         if text_path is not None and not text_path.is_dir():
             raise ValueError("when eval is a directory, text must also be a directory")
+        if pdf_path is not None and not pdf_path.is_dir():
+            raise ValueError("when eval is a directory, pdf must also be a directory")
 
         documents = []
 
@@ -115,21 +119,23 @@ def load_documents(
             gold_file = None
             platinum_file = None
             text_source = None
+            pdf_source = None
+
 
             if gold_path is not None:
                 gold_file = gold_path / eval_file.name
                 if not gold_file.exists():
                     raise ValueError(f"no matching gold file found for: {eval_file.name}")
-
             if platinum_path is not None:
                 platinum_file = platinum_path / eval_file.name
                 if not platinum_file.exists():
                     raise ValueError(f"no matching platinum file found for: {eval_file.name}")
-
             if text_path is not None:
                 text_source = get_matching_text_source(eval_file, text_path)
+            if pdf_path is not None:
+                pdf_source = get_matching_pdf_source(eval_file, pdf_path)
 
-            documents.extend(pair_files(eval_file, gold_file, platinum_file, text_source))
+            documents.extend(pair_files(eval_file, gold_file, platinum_file, text_source, pdf_source))
 
         return documents
     raise ValueError(f"path does not exist: {eval_path}")
@@ -139,6 +145,7 @@ def pair_files(
     gold_file: Path | None = None,
     platinum_file: Path | None = None,
     text_source: Path | None = None,
+    pdf_source: Path | None = None
 ) -> list[Document]:
 
     records = load_file(eval_file)
@@ -152,6 +159,7 @@ def pair_files(
         raise ValueError(f"record count mismatch between {eval_file.name} ({len(records)}) and platinum ({len(platinum_records)})")
 
     texts = load_texts(text_source, len(records)) if text_source is not None else None
+    pdfs = load_pdfs(pdf_source, len(records)) if pdf_source is not None else None
 
     documents = []
 
@@ -160,7 +168,8 @@ def pair_files(
         gold = gold_records[i] if gold_records is not None else None
         platinum = platinum_records[i] if platinum_records is not None else None
         text = texts[i] if texts is not None else None
-        documents.append(Document(eval=record, gold=gold, platinum=platinum, text=text))
+        pdf = pdfs[i] if pdfs is not None else None
+        documents.append(Document(eval=record, gold=gold, platinum=platinum, text=text, pdf=pdf))
 
     return documents
 
@@ -207,3 +216,45 @@ def load_texts(text_source: Path, n_records: int) -> list[str]:
         raise ValueError(f"text count mismatch for {text_source.name}: {n_records} records, {len(files)} text files")
 
     return [load_document_text(file) for file in files]
+
+def get_matching_pdf_source(eval_file: Path, pdf_path: Path) -> Path:
+
+    pdf_file = pdf_path / f"{eval_file.stem}.pdf"
+    pdf_dir = pdf_path / eval_file.stem
+    matches = [path for path in [pdf_file, pdf_dir] if path.exists()]
+
+    if len(matches) > 1:
+        raise ValueError(f"multiple matching PDF sources found for: {eval_file.name}")
+    if matches:
+        return matches[0]
+
+    raise ValueError(f"no matching PDF found for: {eval_file.name}")
+
+def load_pdfs(pdf_source: Path, n_records: int) -> list[Path]:
+
+    if pdf_source.is_file():
+        if pdf_source.suffix.lower() != ".pdf":
+            raise ValueError(f"not a PDF file: {pdf_source}")
+        if n_records != 1:
+            raise ValueError(f"{pdf_source.name} cannot be matched to {n_records} records")
+        return [pdf_source]
+
+    if not pdf_source.is_dir():
+        raise ValueError(f"PDF path does not exist: {pdf_source}")
+
+    files = [file for file in pdf_source.iterdir() if file.suffix.lower() == ".pdf" and file.stem.isdigit()]
+    indices = [int(file.stem) for file in files]
+
+    if len(indices) != len(set(indices)):
+        raise ValueError(f"duplicate PDF indices found in {pdf_source}")
+
+    files = sorted(files, key=lambda file: int(file.stem))
+    indices = [int(file.stem) for file in files]
+
+    if indices != list(range(len(files))):
+        raise ValueError(f"PDF files in {pdf_source} must be consecutively numbered starting at 0")
+
+    if len(files) != n_records:
+        raise ValueError(f"PDF count mismatch for {pdf_source.name}: {n_records} records, {len(files)} PDF files")
+
+    return files
