@@ -58,7 +58,7 @@ Install LibraLens from the project directory. Required Python dependencies are i
 pip install .
 ```
 
-For a quick start, before diving deeper into the LibraLens documentation, you can evaluate MARC records against a gold standard by provide the paths to the corresponding XML files:
+For a quick start, before diving deeper into the LibraLens documentation, you can evaluate MARC records against a gold standard by providing the paths to the corresponding XML files:
 
 ```bash
 libralens --eval [path-to-xml-file] --gold [path-to-gold-xml]
