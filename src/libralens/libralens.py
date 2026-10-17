@@ -52,7 +52,7 @@ class LibraLens:
                 for run in runs
             ]
         else:
-            methods = list(METHODS.keys()) if methods is None else list(dict.fromkeys(methods))
+            methods = [method for method in METHODS if method != "human-annotation"] if methods is None else list(dict.fromkeys(methods))
             self.runs = [
                 Run(
                     method=method,
