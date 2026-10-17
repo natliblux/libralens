@@ -1,8 +1,8 @@
 from .base import BaseMethod
 
-class HumanAnnotationMethod(BaseMethod):
+class HumanRatingMethod(BaseMethod):
 
-    name = "human-annotation"
+    name = "human-rating"
 
     requires_pdf = True
     requires_output = True
@@ -23,4 +23,4 @@ class HumanAnnotationMethod(BaseMethod):
     }
 
     def run_doc(self, doc, fields, llm=None):
-        raise NotImplementedError("human annotations are collected through an annotation session")
+        raise NotImplementedError("human ratings are collected through a rating session")

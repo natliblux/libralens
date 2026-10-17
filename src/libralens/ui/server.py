@@ -6,23 +6,23 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from ..annotation import AnnotationSession
+from ..rating import RatingSession
 from ..record import Record
 from ..enums import InputFormat
 
-class AnnotationRequest(BaseModel):
+class RatingRequest(BaseModel):
     rating: str | None = None
     fields: dict = {}
 
 def create_app(output: Path) -> FastAPI:
 
     output = Path(output).resolve()
-    session = AnnotationSession(output)
+    session = RatingSession(output)
 
     if not (output / "session.json").is_file():
-        raise FileNotFoundError(f"annotation session not found: {output}")
+        raise FileNotFoundError(f"rating session not found: {output}")
 
-    app = FastAPI(title="LibraLens Annotation")
+    app = FastAPI(title="LibraLens Human Rating")
 
     ui_dir = Path(__file__).parent
     app.mount("/static", StaticFiles(directory=ui_dir / "static"), name="static")
@@ -34,9 +34,9 @@ def create_app(output: Path) -> FastAPI:
     def get_session():
 
         config = json.loads((output / "session.json").read_text(encoding="utf-8"))
-        annotations = session.load_annotations()
+        ratings = session.load_ratings()
 
-        completed = sum(doc["completed"] for doc in annotations["documents"].values())
+        completed = sum(doc["completed"] for doc in ratings["documents"].values())
 
         return {
             "config": config,
@@ -70,18 +70,18 @@ def create_app(output: Path) -> FastAPI:
 
         images = sorted((directory / "images").glob("*.png")) if (directory / "images").exists() else []
 
-        annotations = session.load_annotations()
+        ratings = session.load_ratings()
 
         return {
             "id": document_id,
             "records": records,
             "mappings": mappings,
             "images": [f"/api/documents/{document_id}/images/{path.name}" for path in images],
-            "annotation": annotations["documents"][str(document_id)]
+            "rating": ratings["documents"][str(document_id)]
         }
 
     @app.post("/api/documents/{document_id}")
-    def save_document(document_id: int, request: AnnotationRequest):
+    def save_document(document_id: int, request: RatingRequest):
 
         try:
             completed = session.save_document(document_id, request.model_dump())

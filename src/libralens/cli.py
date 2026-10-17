@@ -58,8 +58,8 @@ def main():
     subparsers = parser.add_subparsers(dest="command")
     eval_parser = subparsers.add_parser("eval", help="evaluate MARC records")
     add_eval_arguments(eval_parser)
-    annotate_parser = subparsers.add_parser("annotate", help="open an existing annotation session")
-    annotate_parser.add_argument("output", help="directory containing an annotation session")
+    annotate_parser = subparsers.add_parser("annotate", help="open an existing rating session")
+    annotate_parser.add_argument("output", help="directory containing an rating session")
 
     if len(sys.argv) > 1 and sys.argv[1] not in ("eval", "annotate", "-h", "--help"):
         args = parser.parse_args(["eval"] + sys.argv[1:])

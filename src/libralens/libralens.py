@@ -9,7 +9,7 @@ from .methods import METHODS
 from .loader import load_documents
 from .llm import LLM
 from .plot import create_results_plot
-from .annotation import AnnotationSession
+from .rating import RatingSession
 
 class LibraLens:
 
@@ -52,7 +52,7 @@ class LibraLens:
                 for run in runs
             ]
         else:
-            methods = [method for method in METHODS if method != "human-annotation"] if methods is None else list(dict.fromkeys(methods))
+            methods = [method for method in METHODS if method != "human-rating"] if methods is None else list(dict.fromkeys(methods))
             self.runs = [
                 Run(
                     method=method,
@@ -98,8 +98,8 @@ class LibraLens:
 
         if self.output:
             self._write_output()
-            if "human-annotation" in self.methods:
-                AnnotationSession(self.output).create(self.runs, len(self.documents))
+            if "human-rating" in self.methods:
+                RatingSession(self.output).create(self.runs, len(self.documents))
                 if open_ui:
                     self.annotate(self.output)
         if self.verbose:
@@ -210,7 +210,7 @@ class LibraLens:
         if self.output.exists() and not self.output.is_dir():
             raise ValueError(f"output path is not a directory: {self.output}")
 
-        if (self.output / "session.json").exists() or (self.output / "annotations.json").exists():
+        if (self.output / "session.json").exists() or (self.output / "ratings.json").exists():
             raise ValueError(f"the following output directory cannot be overwritten: {self.output}")
 
     def _validate_requirements(self) -> None:
@@ -290,5 +290,5 @@ class LibraLens:
 
     @staticmethod
     def annotate(output: str | Path) -> None:
-        print("use the browser based interface for human-annotation\n")
+        print("use the browser based interface for human-rating\n")
         launch(output)

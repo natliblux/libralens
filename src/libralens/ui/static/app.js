@@ -3,7 +3,7 @@ const RATINGS = ["excellent", "good", "ok", "bad"];
 let documentId = 0;
 let totalDocuments = 0;
 let selectedFields = {};
-let annotation = null;
+let rating = null;
 let dirty = false;
 let currentEvalFields = [];
 let currentRecords = null;
@@ -29,20 +29,20 @@ function element(tag, className = "", text = "") {
     return node;
 }
 
-function isAnnotationComplete() {
-    if (!annotation?.rating) return false;
+function isRatingComplete() {
+    if (!rating?.rating) return false;
 
     for (const field of currentEvalFields) {
         if (!Object.hasOwn(selectedFields, field.tag)) continue;
 
-        const fieldAnnotation = annotation.fields[String(field.id)];
+        const fieldRating = rating.fields[String(field.id)];
 
-        if (!fieldAnnotation?.rating) return false;
+        if (!fieldRating?.rating) return false;
 
         for (const subfield of field.subfields || []) {
             if (!selectedFields[field.tag].includes(subfield.code)) continue;
 
-            if (!fieldAnnotation.subfields?.[String(subfield.id)]) {
+            if (!fieldRating.subfields?.[String(subfield.id)]) {
                 return false;
             }
         }
@@ -154,29 +154,29 @@ function renderField(field, editable, collectionId, first) {
 
     if (selected) {
         const id = String(field.id);
-        const fieldAnnotation = annotation.fields[id] || { rating: null, subfields: {} };
+        const fieldRating = rating.fields[id] || { rating: null, subfields: {} };
 
-        header.append(ratingGroup(`field-${id}`, fieldAnnotation.rating, rating => {
-            if (!annotation.fields[id]) {
-                annotation.fields[id] = { rating: null, subfields: {} };
+        header.append(ratingGroup(`field-${id}`, fieldRating.rating, rating => {
+            if (!rating.fields[id]) {
+                rating.fields[id] = { rating: null, subfields: {} };
             }
 
-            const fieldAnnotation = annotation.fields[id];
-            fieldAnnotation.rating = rating;
+            const fieldRating = rating.fields[id];
+            fieldRating.rating = rating;
 
             const subfields = (field.subfields || []).filter(subfield =>
                 selectedFields[field.tag].includes(subfield.code)
             );
 
             const anyRated = subfields.some(subfield =>
-                fieldAnnotation.subfields?.[String(subfield.id)] != null
+                fieldRating.subfields?.[String(subfield.id)] != null
             );
 
             if (!anyRated) {
-                fieldAnnotation.subfields ||= {};
+                fieldRating.subfields ||= {};
 
                 for (const subfield of subfields) {
-                    fieldAnnotation.subfields[String(subfield.id)] = rating;
+                    fieldRating.subfields[String(subfield.id)] = rating;
                 }
 
                 for (const subfield of subfields) {
@@ -213,13 +213,13 @@ function renderSubfield(field, subfield, editable, collectionId) {
     if (selected && selectedFields[field.tag].includes(subfield.code)) {
         const fieldId = String(field.id);
         const subfieldId = String(subfield.id);
-        const value = annotation.fields[fieldId]?.subfields?.[subfieldId] || null;
+        const value = rating.fields[fieldId]?.subfields?.[subfieldId] || null;
 
         container.append(ratingGroup(`subfield-${fieldId}-${subfieldId}`, value, rating => {
-            if (!annotation.fields[fieldId]) {
-                annotation.fields[fieldId] = { rating: null, subfields: {} };
+            if (!rating.fields[fieldId]) {
+                rating.fields[fieldId] = { rating: null, subfields: {} };
             }
-            annotation.fields[fieldId].subfields[subfieldId] = rating;
+            rating.fields[fieldId].subfields[subfieldId] = rating;
         }, "subfield-rating"));
     }
 
@@ -416,15 +416,15 @@ function renderImages(images) {
 }
 
 function renderDocument(data) {
-    annotation = structuredClone(data.annotation);
-    annotation.fields ||= {};
+    rating = structuredClone(data.rating);
+    rating.fields ||= {};
     currentEvalFields = data.records.eval;
 
     const ratingContainer = document.getElementById("document-rating");
     ratingContainer.replaceChildren();
 
-    ratingContainer.append(ratingGroup("document-rating", annotation.rating, rating => {
-        annotation.rating = rating;
+    ratingContainer.append(ratingGroup("document-rating", rating.rating, rating => {
+        rating.rating = rating;
         updateNavigation();
     }));
 
@@ -459,18 +459,18 @@ function updateNavigation() {
     const last = documentId === totalDocuments - 1;
 
     button.textContent = last ? (saved ? "Saved ✓" : "Save") : "Next →";
-    button.disabled = !isAnnotationComplete() || saved;
+    button.disabled = !isRatingComplete() || saved;
 }
 
 async function saveDocument() {
-    if (!isAnnotationComplete()) return false;
+    if (!isRatingComplete()) return false;
 
     await api(`/api/documents/${documentId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-            rating: annotation.rating,
-            fields: annotation.fields
+            rating: rating.rating,
+            fields: rating.fields
         })
     });
 
@@ -514,7 +514,7 @@ async function init() {
 
         totalDocuments = session.total;
 
-        const run = session.config.runs.find(run => run.method === "human-annotation");
+        const run = session.config.runs.find(run => run.method === "human-rating");
         selectedFields = run.fields;
 
         await loadDocument(0);

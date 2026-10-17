@@ -6,7 +6,7 @@ from .record import Record
 from .constants import HUMAN_RATINGS
 from .enums import InputFormat
 
-class AnnotationSession:
+class RatingSession:
 
     def __init__(self, output: Path):
         self.output = Path(output)
@@ -24,7 +24,7 @@ class AnnotationSession:
             "n_documents": n_documents
         }
 
-        annotations = {
+        ratings = {
             "documents": {
                 str(i): {"completed": False, "rating": None, "fields": {}}
                 for i in range(n_documents)
@@ -32,11 +32,11 @@ class AnnotationSession:
         }
 
         (self.output / "session.json").write_text(json.dumps(config, indent=4, ensure_ascii=False), encoding="utf-8")
-        (self.output / "annotations.json").write_text(json.dumps(annotations, indent=4, ensure_ascii=False), encoding="utf-8")
+        (self.output / "ratings.json").write_text(json.dumps(ratings, indent=4, ensure_ascii=False), encoding="utf-8")
 
-    def load_annotations(self) -> dict:
+    def load_ratings(self) -> dict:
 
-        return json.loads((self.output / "annotations.json").read_text(encoding="utf-8"))
+        return json.loads((self.output / "ratings.json").read_text(encoding="utf-8"))
 
     def _get_record(self, document_id: int) -> Record:
 
@@ -54,7 +54,7 @@ class AnnotationSession:
     def _get_selected_fields(self) -> dict:
 
         config = json.loads((self.output / "session.json").read_text(encoding="utf-8"))
-        run = next(run for run in config["runs"] if run["method"] == "human-annotation")
+        run = next(run for run in config["runs"] if run["method"] == "human-rating")
 
         return run["fields"]
 
@@ -63,63 +63,63 @@ class AnnotationSession:
         selected = self._get_selected_fields()
         valid_ratings = set(HUMAN_RATINGS)
 
-        for field_id, field_annotation in fields.items():
+        for field_id, field_rating in fields.items():
 
             field = next((f for f in record.fields if f["id"] == int(field_id)), None)
             if field is None:
                 raise ValueError(f"invalid field id: {field_id}")
             if field["tag"] not in selected:
-                raise ValueError(f"field {field['tag']} is not selected for annotation")
+                raise ValueError(f"field {field['tag']} is not selected for rating")
 
-            rating = field_annotation.get("rating")
+            rating = field_rating.get("rating")
             if rating is not None and rating not in valid_ratings:
                 raise ValueError(f"invalid rating for field {field_id}: {rating}")
 
-            for subfield_id, subfield_rating in field_annotation.get("subfields", {}).items():
+            for subfield_id, subfield_rating in field_rating.get("subfields", {}).items():
 
                 subfield = next((s for s in field.get("subfields", []) if s["id"] == int(subfield_id)), None)
                 if subfield is None:
                     raise ValueError(f"invalid subfield id: {subfield_id}")
                 if subfield["code"] not in selected[field["tag"]]:
-                    raise ValueError(f"subfield {field['tag']}${subfield['code']} is not selected for annotation")
+                    raise ValueError(f"subfield {field['tag']}${subfield['code']} is not selected for rating")
                 if subfield_rating not in valid_ratings:
                     raise ValueError(f"invalid rating for {field['tag']}${subfield['code']}: {subfield_rating}")
 
-    def _is_complete(self, record: Record, annotation: dict) -> bool:
+    def _is_complete(self, record: Record, rating: dict) -> bool:
 
-        if annotation.get("rating") not in HUMAN_RATINGS:
+        if rating.get("rating") not in HUMAN_RATINGS:
             return False
 
         selected = self._get_selected_fields()
-        fields = annotation.get("fields", {})
+        fields = rating.get("fields", {})
 
         for field in record.fields:
             if field["tag"] not in selected:
                 continue
 
-            field_annotation = fields.get(str(field["id"]), {})
+            field_rating = fields.get(str(field["id"]), {})
 
-            if field_annotation.get("rating") not in HUMAN_RATINGS:
+            if field_rating.get("rating") not in HUMAN_RATINGS:
                 return False
 
             for subfield in field.get("subfields", []):
                 if subfield["code"] not in selected[field["tag"]]:
                     continue
 
-                rating = field_annotation.get("subfields", {}).get(str(subfield["id"]))
+                rating = field_rating.get("subfields", {}).get(str(subfield["id"]))
 
                 if rating not in HUMAN_RATINGS:
                     return False
 
         return True
 
-    def _build_subfields(self, field: dict, annotation: dict) -> dict:
+    def _build_subfields(self, field: dict, rating: dict) -> dict:
 
         result = {}
 
         for subfield in field.get("subfields", []):
 
-            rating = annotation.get(str(subfield["id"]))
+            rating = rating.get(str(subfield["id"]))
             if rating is None:
                 continue
 
@@ -137,14 +137,14 @@ class AnnotationSession:
 
         return result
 
-    def _build_info(self, record: Record, annotations: dict) -> dict:
+    def _build_info(self, record: Record, ratings: dict) -> dict:
 
         info = {}
 
         for field in record.fields:
 
-            annotation = annotations.get(str(field["id"]))
-            if annotation is None:
+            rating = ratings.get(str(field["id"]))
+            if rating is None:
                 continue
 
             tag = field["tag"]
@@ -155,21 +155,21 @@ class AnnotationSession:
                 occurrences.append(None)
 
             occurrences[occurrence] = {
-                "score": HUMAN_RATINGS[annotation["rating"]] if annotation.get("rating") is not None else None,
-                "subfields": self._build_subfields(field, annotation.get("subfields", {}))
+                "score": HUMAN_RATINGS[rating["rating"]] if rating.get("rating") is not None else None,
+                "subfields": self._build_subfields(field, rating.get("subfields", {}))
             }
 
         return info
 
-    def _update_results(self, document_id: int, annotation: dict, record: Record, all_completed: bool) -> None:
+    def _update_results(self, document_id: int, rating: dict, record: Record, all_completed: bool) -> None:
 
         path = self.output / "results.json"
         results = json.loads(path.read_text(encoding="utf-8"))
 
         result = next(result for result in results if result["id"] == document_id)
-        result["methods"]["human-annotation"] = {
-            "score": HUMAN_RATINGS[annotation["rating"]],
-            "info": self._build_info(record, annotation.get("fields", {}))
+        result["methods"]["human-rating"] = {
+            "score": HUMAN_RATINGS[rating["rating"]],
+            "info": self._build_info(record, rating.get("fields", {}))
         }
 
         config = json.loads((self.output / "session.json").read_text(encoding="utf-8"))
@@ -187,29 +187,29 @@ class AnnotationSession:
                 output_path=self.output / "results.png"
             )
 
-    def save_document(self, document_id: int, annotation: dict) -> bool:
+    def save_document(self, document_id: int, rating: dict) -> bool:
 
         record = self._get_record(document_id)
-        fields = annotation.get("fields", {})
+        fields = rating.get("fields", {})
         self._validate_fields(record, fields)
 
-        completed = self._is_complete(record, annotation)
-        annotations = self.load_annotations()
+        completed = self._is_complete(record, rating)
+        ratings = self.load_ratings()
 
-        previous = annotations["documents"][str(document_id)]
+        previous = ratings["documents"][str(document_id)]
         if previous["completed"] and not completed:
             raise ValueError(f"cannot remove rating from completed document {document_id}")
 
-        annotations["documents"][str(document_id)] = {
+        ratings["documents"][str(document_id)] = {
             "completed": completed,
-            "rating": annotation.get("rating"),
+            "rating": rating.get("rating"),
             "fields": fields
         }
 
-        (self.output / "annotations.json").write_text(json.dumps(annotations, indent=4, ensure_ascii=False), encoding="utf-8")
+        (self.output / "ratings.json").write_text(json.dumps(ratings, indent=4, ensure_ascii=False), encoding="utf-8")
 
         if completed:
-            all_completed = all(doc["completed"] for doc in annotations["documents"].values())
-            self._update_results(document_id, annotation, record, all_completed)
+            all_completed = all(doc["completed"] for doc in ratings["documents"].values())
+            self._update_results(document_id, rating, record, all_completed)
 
         return completed
