@@ -9,6 +9,7 @@ let currentEvalFields = [];
 let currentRecords = null;
 let currentMappings = null;
 let expandedRecordsHeight = 0;
+let saved = false;
 
 async function api(url, options = {}) {
     const response = await fetch(url, options);
@@ -77,6 +78,7 @@ function ratingGroup(name, value, onChange, className = "") {
 
 function markDirty() {
     dirty = true;
+    saved = false;
 }
 
 function updateImageColumnHeight() {
@@ -437,6 +439,7 @@ function renderDocument(data) {
     });
 
     dirty = false;
+    saved = false;
 }
 
 async function loadDocument(id) {
@@ -453,8 +456,10 @@ function updateNavigation() {
     document.getElementById("previous").disabled = documentId === 0;
 
     const button = document.getElementById("save-next");
-    button.textContent = documentId === totalDocuments - 1 ? "Save" : "Next →";
-    button.disabled = !isAnnotationComplete();
+    const last = documentId === totalDocuments - 1;
+
+    button.textContent = last ? (saved ? "Saved ✓" : "Save") : "Next →";
+    button.disabled = !isAnnotationComplete() || saved;
 }
 
 async function saveDocument() {
@@ -470,6 +475,8 @@ async function saveDocument() {
     });
 
     dirty = false;
+    saved = documentId === totalDocuments - 1;
+    updateNavigation();
     return true;
 }
 
