@@ -7,9 +7,9 @@ import json
 from .constants import FIELD_GROUPS
 from .methods import METHODS
 from .loader import load_documents
-from .llm import LLM
 from .plot import create_results_plot
 from .rating import RatingSession
+from .llm import LLM, is_configured
 
 class LibraLens:
 
@@ -52,7 +52,10 @@ class LibraLens:
                 for run in runs
             ]
         else:
-            methods = [method for method in METHODS if method != "human-rating"] if methods is None else list(dict.fromkeys(methods))
+            if methods is None:
+                methods = [name for name, cls in METHODS.items() if not self._missing_requirements(cls())]
+            else:
+                methods = list(dict.fromkeys(methods))
             self.runs = [
                 Run(
                     method=method,
@@ -217,24 +220,9 @@ class LibraLens:
 
         for run in self.runs:
             method = self.method_instances[run.method]
-
-            if method.requires_gold and self.gold is None:
-                raise ValueError(f"method '{method.name}' requires gold records")
-
-            if method.requires_platinum and self.platinum is None:
-                raise ValueError(f"method '{method.name}' requires platinum records")
-
-            if method.requires_gold_or_platinum and self.gold is None and self.platinum is None:
-                raise ValueError(f"method '{method.name}' requires gold or platinum records")
-
-            if method.requires_text and self.text is None:
-                raise ValueError(f"method '{method.name}' requires plain text")
-
-            if method.requires_pdf and self.pdf is None:
-                raise ValueError(f"method '{method.name}' requires pdf documents")
-
-            if method.requires_output and self.output is None:
-                raise ValueError(f"method '{method.name}' requires an output directory")
+            missing = self._missing_requirements(method)
+            if missing:
+                raise ValueError(f"method '{method.name}' requires: {', '.join(missing)}")
 
     def _validate_runs(self) -> None:
 
@@ -287,6 +275,27 @@ class LibraLens:
                         resolved.setdefault(field, set()).add(subfield)
 
         return resolved
+
+    def _missing_requirements(self, method) -> list[str]:
+
+        missing = []
+
+        if method.requires_gold and self.gold is None:
+            missing.append("gold records")
+        if method.requires_platinum and self.platinum is None:
+            missing.append("platinum records")
+        if method.requires_gold_or_platinum and self.gold is None and self.platinum is None:
+            missing.append("gold or platinum records")
+        if method.requires_text and self.text is None:
+            missing.append("plain text")
+        if method.requires_pdf and self.pdf is None:
+            missing.append("pdf documents")
+        if method.requires_output and self.output is None:
+            missing.append("output directory")
+        if method.requires_llm and not is_configured():
+            missing.append("llm configuration")
+
+        return missing
 
     @staticmethod
     def annotate(output: str | Path) -> None:

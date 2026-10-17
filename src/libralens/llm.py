@@ -39,3 +39,7 @@ class LLM:
         )
 
         return response.choices[0].message.content
+
+@staticmethod
+def is_configured() -> bool:
+    return bool(os.getenv(LLM_URL_ENV) and os.getenv(LLM_MODEL_ENV))

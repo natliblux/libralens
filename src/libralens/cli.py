@@ -56,10 +56,15 @@ def main():
 
     parser = argparse.ArgumentParser(description="LibraLens CLI")
     subparsers = parser.add_subparsers(dest="command")
-    eval_parser = subparsers.add_parser("eval", help="evaluate MARC records")
+
+    eval_parser = subparsers.add_parser("eval", help="evaluate MARC records", prog="libralens")
     add_eval_arguments(eval_parser)
+
     annotate_parser = subparsers.add_parser("annotate", help="open an existing rating session")
-    annotate_parser.add_argument("output", help="directory containing an rating session")
+    annotate_parser.add_argument("output", help="directory containing a rating session")
+
+    # Show evaluation arguments in top-level help
+    parser.format_help = eval_parser.format_help
 
     if len(sys.argv) > 1 and sys.argv[1] not in ("eval", "annotate", "-h", "--help"):
         args = parser.parse_args(["eval"] + sys.argv[1:])
