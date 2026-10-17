@@ -37,6 +37,7 @@ LibraLens is designed as a toolbox, allowing different evaluation methods and MA
   - [Recall Score](#methods-set-comparisons)
   - [Subfield Cardinality](#method-subfield-cardinality)
   - [Record Usability](#method-record-usability)
+  - [Human Rating](#method-human-rating)
 - [Configuration](#configuration)
   - [Document Matching](#document-matching)
   - [LLM Configuration](#llm-configuration)
@@ -51,13 +52,17 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
-Install LibraLens from the project directory:
+Install LibraLens from the project directory. Required Python dependencies are installed automatically.
 
 ```bash
 pip install .
 ```
 
-Required Python dependencies are installed automatically.
+For a quick start, before diving deeper into the LibraLens documentation, you can evaluate MARC records against a gold standard by provide the paths to the corresponding XML files:
+
+```bash
+libralens --eval [path-to-xml-file] --gold [path-to-gold-xml]
+```
 
 ## Concepts
 
@@ -69,6 +74,7 @@ The basic unit evaluated by LibraLens is a document. A document can contain:
 - a **gold** reference record
 - a **platinum** reference record
 - the plain **text** of the underlying PDF
+- the source **PDF**
 
 Records can be provided as individual files or directories containing multiple files. LibraLens supports `.xml` and `.txt` formats for MARC records. Plain text can be provided as a `.txt` (text is read directly) or `.pdf` (LibraLens PDF text extraction) file. XML files may contain one or multiple records, while text files contain a single record. Corresponding eval, reference, and plain-text data is matched as described in [Document Matching](#document-matching).
 
@@ -87,6 +93,22 @@ Alternatively, from the command line:
 ```bash
 --methods edit-distance text-match
 ```
+
+### Methods
+
+An evaluation consists of one or more methods. Each method evaluates a particular aspect of the record and returns a normalized score between `0.0` and `1.0`, or `None` when no applicable evaluation can be performed. If no methods are specified, LibraLens automatically selects **all methods whose requirements are satisfied** by the provided inputs. For example, methods requiring a reference recod are included only when gold and/or platinum is provided. This also applies to [human-rating](#method-human-rating), which is selected automatically when an output directory is provided. To run specific methods instead, pass a list of strings:
+
+```python
+methods=["edit-distance", "text-match"]
+```
+
+Alternatively, from the command line:
+
+```bash
+--methods edit-distance text-match
+```
+
+When methods are explicitly specified, LibraLens runs only those methods and raises an error if their requirements are not met.
 
 ### Fields
 
@@ -237,18 +259,19 @@ libralens \
     --output output/
 ```
 
-Short forms are available for the main command-line options:
+All command-line options:
 
 | Option | Short form |
 |---|---|
-| `--eval` | `-e` |
-| `--methods` | `-m` |
-| `--runs` | `-r` |
-| `--fields` | `-f` |
-| `--gold` | `-g` |
-| `--platinum` | `-p` |
-| `--text` | `-t` |
-| `--output` | `-o` |
+| `--eval` | provides eval records |
+| `--methods` | defines methods to use |
+| `--runs` | alternatively defines custom runs |
+| `--fields` | defines fields to evaluate |
+| `--gold` | provides gold records |
+| `--platinum` | provides platinum records |
+| `--text` | provides plain texts |
+| `--pdf` | provides PDF files |
+| `--output` | defines output directory |
 
 Run `libralens --help` for the complete command-line reference.
 
@@ -346,7 +369,7 @@ Detailed diagnostics can be accessed on disk by passing the `--output` option.
 
 ## Evaluation Methods
 
-LibraLens currently provides the following ten methods:
+LibraLens currently provides the following 11 methods:
 
 | Method | Requires | Purpose |
 |---|---|---|
@@ -360,6 +383,7 @@ LibraLens currently provides the following ten methods:
 | [`recall-score`](#methods-set-comparisons) | Reference Record | Computes the recall score between the eval and reference record for values with unambiguous equality. |
 | [`subfield-cardinality`](#method-subfield-cardinality) | Reference Record | Compares the cardinality of selected fields and subfields in the eval and reference records. |
 | [`record-usability`](#method-record-usability) | Reference Record and [LLM](#llm-configuration) | Applies binary minimum-quality criteria to determine whether the record is usable. |
+| [`human-rating`](#method-human-rating) | PDF and Output | Provides web interface for humans to rate the eval record. |
 
 Methods requiring a reference record can use gold, platinum, or both. If both are supplied, the method is evaluated independently against each reference, and the two resulting scores are averaged.
 
@@ -667,6 +691,10 @@ Every executed criterion is listed in the diagnostic output under either `passed
 | `710` | `.a` `.b` |
 
 [↑ Back to all evaluation methods](#evaluation-methods)
+
+### Method: Human Rating
+
+Coming soon.
 
 ## Configuration
 
