@@ -1,4 +1,5 @@
 import json
+from ..constants import HUMAN_RATINGS
 from ..document import Document
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
@@ -41,7 +42,8 @@ def create_app(output: Path) -> FastAPI:
         return {
             "config": config,
             "completed": completed,
-            "total": config["n_documents"]
+            "total": config["n_documents"],
+            "ratings": list(HUMAN_RATINGS)
         }
 
     @app.get("/api/documents/{document_id}")

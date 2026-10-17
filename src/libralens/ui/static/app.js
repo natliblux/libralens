@@ -1,5 +1,4 @@
-const RATINGS = ["excellent", "good", "ok", "bad"];
-
+let RATINGS = [];
 let documentId = 0;
 let totalDocuments = 0;
 let selectedFields = {};
@@ -511,8 +510,8 @@ window.addEventListener("beforeunload", event => {
 async function init() {
     try {
         const session = await api("/api/session");
-
         totalDocuments = session.total;
+        RATINGS = session.ratings;
 
         const run = session.config.runs.find(run => run.method === "human-rating");
         selectedFields = run.fields;
