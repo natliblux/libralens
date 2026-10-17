@@ -290,4 +290,5 @@ class LibraLens:
 
     @staticmethod
     def annotate(output: str | Path) -> None:
+        print("use the browser based interface for human-annotation\n")
         launch(output)
