@@ -113,13 +113,13 @@ class RatingSession:
 
         return True
 
-    def _build_subfields(self, field: dict, rating: dict) -> dict:
+    def _build_subfields(self, field: dict, ratings: dict) -> dict:
 
         result = {}
 
         for subfield in field.get("subfields", []):
 
-            rating = rating.get(str(subfield["id"]))
+            rating = ratings.get(str(subfield["id"]))
             if rating is None:
                 continue
 
@@ -155,11 +155,32 @@ class RatingSession:
                 occurrences.append(None)
 
             occurrences[occurrence] = {
-                "score": HUMAN_RATINGS[rating["rating"]] if rating.get("rating") is not None else None,
+                "score": self._field_score(rating) if rating.get("rating") is not None else None,
+                "rating": HUMAN_RATINGS[rating["rating"]] if rating.get("rating") is not None else None,
                 "subfields": self._build_subfields(field, rating.get("subfields", {}))
             }
 
         return info
+
+    def _field_score(self, field_rating: dict) -> float:
+
+        rating = HUMAN_RATINGS[field_rating["rating"]]
+        subfields = [HUMAN_RATINGS[value] for value in field_rating.get("subfields", {}).values()]
+
+        if not subfields:
+            return rating
+
+        return (rating + sum(subfields) / len(subfields)) / 2
+
+    def _document_score(self, rating: dict) -> float:
+
+        document_rating = HUMAN_RATINGS[rating["rating"]]
+        fields = [self._field_score(field) for field in rating.get("fields", {}).values()]
+
+        if not fields:
+            return document_rating
+
+        return (document_rating + sum(fields) / len(fields)) / 2
 
     def _update_results(self, document_id: int, rating: dict, record: Record, all_completed: bool) -> None:
 
@@ -168,7 +189,8 @@ class RatingSession:
 
         result = next(result for result in results if result["id"] == document_id)
         result["methods"]["human-rating"] = {
-            "score": HUMAN_RATINGS[rating["rating"]],
+            "score": self._document_score(rating),
+            "rating": HUMAN_RATINGS[rating["rating"]],
             "info": self._build_info(record, rating.get("fields", {}))
         }
 

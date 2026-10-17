@@ -156,13 +156,13 @@ function renderField(field, editable, collectionId, first) {
         const id = String(field.id);
         const fieldRating = rating.fields[id] || { rating: null, subfields: {} };
 
-        header.append(ratingGroup(`field-${id}`, fieldRating.rating, rating => {
+        header.append(ratingGroup(`field-${id}`, fieldRating.rating, value => {
             if (!rating.fields[id]) {
                 rating.fields[id] = { rating: null, subfields: {} };
             }
 
             const fieldRating = rating.fields[id];
-            fieldRating.rating = rating;
+            fieldRating.rating = value;
 
             const subfields = (field.subfields || []).filter(subfield =>
                 selectedFields[field.tag].includes(subfield.code)
@@ -176,12 +176,12 @@ function renderField(field, editable, collectionId, first) {
                 fieldRating.subfields ||= {};
 
                 for (const subfield of subfields) {
-                    fieldRating.subfields[String(subfield.id)] = rating;
+                    fieldRating.subfields[String(subfield.id)] = value;
                 }
 
                 for (const subfield of subfields) {
                     const name = `subfield-${id}-${subfield.id}`;
-                    const input = document.querySelector(`input[name="${name}"][value="${rating}"]`);
+                    const input = document.querySelector(`input[name="${name}"][value="${value}"]`);
 
                     if (input) input.checked = true;
                 }
@@ -215,11 +215,11 @@ function renderSubfield(field, subfield, editable, collectionId) {
         const subfieldId = String(subfield.id);
         const value = rating.fields[fieldId]?.subfields?.[subfieldId] || null;
 
-        container.append(ratingGroup(`subfield-${fieldId}-${subfieldId}`, value, rating => {
+        container.append(ratingGroup(`subfield-${fieldId}-${subfieldId}`, value, value => {
             if (!rating.fields[fieldId]) {
                 rating.fields[fieldId] = { rating: null, subfields: {} };
             }
-            rating.fields[fieldId].subfields[subfieldId] = rating;
+            rating.fields[fieldId].subfields[subfieldId] = value;
         }, "subfield-rating"));
     }
 
@@ -423,8 +423,8 @@ function renderDocument(data) {
     const ratingContainer = document.getElementById("document-rating");
     ratingContainer.replaceChildren();
 
-    ratingContainer.append(ratingGroup("document-rating", rating.rating, rating => {
-        rating.rating = rating;
+    ratingContainer.append(ratingGroup("document-rating", rating.rating, value => {
+        rating.rating = value;
         updateNavigation();
     }));
 
