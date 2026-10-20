@@ -29,9 +29,9 @@ LibraLens is designed as a toolbox, allowing different evaluation methods and MA
 - [Evaluation Methods](#evaluation-methods)
   - [Field Validity](#method-field-validity)
   - [Text Match](#method-text-match)
-  - [Common Substring](#methods-value-comparisons)
-  - [Edit Distance](#methods-value-comparisons)
-  - [Exact Match](#methods-value-comparisons)
+  - [Common Substring](#methods-fuzzy-comparisons)
+  - [Edit Distance](#methods-fuzzy-comparisons)
+  - [Exact Match](#method-exact-match)
   - [F1 Score](#methods-set-comparisons)
   - [Precision Score](#methods-set-comparisons)
   - [Recall Score](#methods-set-comparisons)
@@ -82,21 +82,7 @@ The selected evaluation **methods** define what the documents require. For examp
 
 ### Methods
 
-An evaluation consists of one or more methods. Each method evaluates a particular aspect of the record and returns a normalized score between `0.0` and `1.0`, or `None` when no applicable evaluation can be performed. If no methods are specified, LibraLens runs all available methods. Specific methods can be selected by passing a list of strings:
-
-```python
-methods=["edit-distance", "text-match"]
-```
-
-Alternatively, from the command line:
-
-```bash
---methods edit-distance text-match
-```
-
-### Methods
-
-An evaluation consists of one or more methods. Each method evaluates a particular aspect of the record and returns a normalized score between `0.0` and `1.0`, or `None` when no applicable evaluation can be performed. If no methods are specified, LibraLens automatically selects **all methods whose requirements are satisfied** by the provided inputs. For example, methods requiring a reference recod are included only when gold and/or platinum is provided. This also applies to [human-rating](#method-human-rating), which is selected automatically when an output directory is provided. To run specific methods instead, pass a list of strings:
+An evaluation consists of one or more methods. Each method evaluates a particular aspect of the record and returns a normalized score between `0.0` and `1.0`, or `None` when no applicable evaluation can be performed. If no methods are specified, LibraLens automatically selects **all methods whose requirements are satisfied** by the provided inputs. For example, methods requiring a reference record are included only when gold and/or platinum is provided. This also applies to [human-rating](#method-human-rating), which is selected automatically when both PDF documents and an output directory are provided. To run specific methods instead, pass a list of strings:
 
 ```python
 methods=["edit-distance", "text-match"]
@@ -112,7 +98,7 @@ When methods are explicitly specified, LibraLens runs only those methods and rai
 
 ### Fields
 
-LibraLens supports a selection of MARC 21 fields and subfields, depending on the evaluation method. The complete list is available [here](#marc-scope). For controlfield `008`, LibraLens treats positions `00-05` and `35-37` as virtual subfields, which are handled like regular MARC subfields during evaluation.
+LibraLens supports a selection of MARC 21 fields, subfields, and indicators, depending on the evaluation method. The complete list is available [here](#marc-scope). For controlfield `008`, LibraLens treats positions `00-05` and `35-37` as virtual subfields, which are handled like regular MARC subfields during evaluation. The same idea applies to indicators, which are also considered as virtual subfields (`ind1` and `ind2`).
 
 ### Grouping
 
@@ -140,7 +126,7 @@ Mapping allows evaluation methods to compare corresponding occurrences even when
 
 ### Selections
 
-Fields can be limited globally to control which MARC fields and subfields are considered. If no fields are specified, each method uses all fields and subfields it supports. Complete fields are selected using their MARC tag (e.g. `245`), while individual subfields use dot notation (e.g. `700.a`). Virtual subfields (`008`) use the same notation (e.g. `008.35-37`). For example:
+Fields can be limited globally to control which MARC fields and subfields are considered. If no fields are specified, each method uses all fields and subfields it supports. Complete fields are selected using their MARC tag (e.g. `245`), while individual subfields can be selected using the dot notation (e.g. `700.a`). Virtual subfields use the same notation (e.g. `008.35-37`, `245.ind1`). For example:
 
 ```python
 fields=["245", "700.a"]
@@ -152,7 +138,7 @@ Alternatively, from the command line:
 --fields 245 700.a
 ```
 
-Selecting a complete field (e.g. `245`) includes all subfields or position ranges supported by the respective method. For grouped person (`100/700`) and corporate (`110/710`) fields, selecting a subfield automatically includes the same subfield across the entire group (selecting `700.a` also selects `100.a`). Unsupported fields and subfields are automatically ignored by LibraLens.
+Selecting a complete field (e.g. `245`) includes all subfields, position ranges (for `008`) and indicators supported by the respective method. For grouped person (`100/700`) and corporate (`110/710`) fields, selecting a subfield automatically includes the same subfield across the entire group (selecting `700.a` also selects `100.a`). Unsupported fields and subfields are automatically ignored by LibraLens.
 
 
 ### Runs
@@ -261,7 +247,7 @@ libralens \
 
 All command-line options:
 
-| Option | Short form |
+| Option | Description |
 |---|---|
 | `--eval` | provides eval records |
 | `--methods` | defines methods to use |
@@ -375,9 +361,9 @@ LibraLens currently provides the following 11 methods:
 |---|---|---|
 | [`field-validity`](#method-field-validity) |  | Checks whether the eval record conforms to known formats and controlled vocabularies. |
 | [`text-match`](#method-text-match) | Plain Text | Matches strings from the eval record with the underlying PDF plain text. |
-| [`common-substring`](#methods-value-comparisons) | Reference Record | Compares the eval record to the reference record using the longest common substring. |
-| [`edit-distance`](#methods-value-comparisons) | Reference Record | Compares the eval record to the reference record using edit distance. |
-| [`exact-match`](#methods-value-comparisons) | Reference Record | Compares the eval record to the reference record using exact equality. |
+| [`common-substring`](#methods-fuzzy-comparisons) | Reference Record | Compares the eval record to the reference record using the longest common substring. |
+| [`edit-distance`](#methods-fuzzy-comparisons) | Reference Record | Compares the eval record to the reference record using edit distance. |
+| [`exact-match`](#method-exact-match) | Reference Record | Compares the eval record to the reference record using exact equality. |
 | [`f1-score`](#methods-set-comparisons) | Reference Record | Computes the F1 score between the eval and reference record for values with unambiguous equality. |
 | [`precision-score`](#methods-set-comparisons) | Reference Record | Computes the precision score between the eval and reference record for values with unambiguous equality. |
 | [`recall-score`](#methods-set-comparisons) | Reference Record | Computes the recall score between the eval and reference record for values with unambiguous equality. |
@@ -402,7 +388,7 @@ The currently implemented checks are:
 Each checked value is classified as valid or invalid. The method score is:
 
 ```text
-valid checks / all checks
+method score = valid checks / all checks
 ```
 
 **Requires:** no additional document data
@@ -446,7 +432,7 @@ John, Doe
 If any one of them is found, the name is counted as matched. Each applicable logical value is classified as matched or unmatched. The method score is:
 
 ```text
-matched values / all checked values
+method score = matched values / all checked values
 ```
 
 **Requires:** plain text
@@ -466,17 +452,14 @@ matched values / all checked values
 
 [↑ Back to all evaluation methods](#evaluation-methods)
 
-### Methods: Value Comparisons
+### Methods: Fuzzy Comparisons
 
-The methods `common-substring`, `edit-distance`, and `exact-match` compare strings from the eval record with corresponding strings from a gold or platinum reference record. Each string comparison produces a normalized score between `0.0` and `1.0`:
+The methods `common-substring` and `edit-distance` compare strings from the eval record with corresponding strings from a gold or platinum reference record. Each string comparison produces a normalized score between `0.0` and `1.0`:
 
 -   `common-substring` uses the length of the longest continuous substring shared by both values.
 -   `edit-distance` uses the normalized Levenshtein similarity.
--   `exact-match` uses strict string equality without normalization.
 
-For all three methods, only values for which a comparison can be established contribute to the score. Missing, extra, or otherwise unmatched values are omitted rather than assigned a score of `0.0`. The methods therefore measure the similarity or equality of comparable values rather than record completeness or cardinality. Differences in cardinality can instead be evaluated using [`subfield-cardinality`](#method-subfield-cardinality).
-
-#### Common Substring and Edit Distance
+For both methods, only values for which a comparison can be established contribute to the score. Missing, extra, or otherwise unmatched values are omitted rather than assigned a score of `0.0`. The methods therefore measure the similarity of comparable values rather than record completeness or cardinality. Differences in cardinality can instead be evaluated using [`subfield-cardinality`](#method-subfield-cardinality).
 
 For person and corporate fields, `.a` and `.b` are concatenated into a single string before the similarity is calculated, for example:
 
@@ -492,6 +475,12 @@ Example Organization Research Department
 
 For field `245`, selected subfields are compared individually when a value is available in both records. When both `.a` and `.b` are selected, an additional comparison of the combined `.a + .b` title is performed. `490.a` is compared individually as well. For field `264`, subfields `.a`, `.b`, and `.c` are compared individually within corresponding mapped occurrences.
 
+``` text
+method score = sum of applicable comparison scores / number of applicable comparisons
+```
+
+**Requires:** gold or platinum
+
 **Supports:**
 
 | Field | Subfields |
@@ -504,32 +493,35 @@ For field `245`, selected subfields are compared individually when a value is av
 | `700` | `.a` `.b` |
 | `710` | `.a` `.b` |
 
-#### Exact Match
+[↑ Back to all evaluation methods](#evaluation-methods)
 
-`exact-match` compares individual subfield values using strict string equality, without normalization. Differences in capitalization, whitespace, or punctuation therefore result in a score of `0.0`. Unlike the other value-comparison methods, it does not concatenate any subfields.
+### Method: Exact Match
+
+`exact-match` compares individual subfield values (also applies to indicators) from the eval record with corresponding values from a gold or platinum reference record using strict string equality (without normalization). Differences in capitalization, whitespace, or punctuation therefore result in a score of `0.0`. Unlike `common-substring` and `edit-distance`, it does not concatenate any subfields for evaluation.
+
+Similar to the fuzzy comparison methods, only values for which a comparison can be established contribute to the score. Missing, extra, or otherwise unmatched values are omitted rather than assigned a score of `0.0`. The method score is:
+
+``` text
+method score = sum of applicable comparison scores / number of applicable comparisons
+```
+
+**Requires:** gold or platinum
 
 **Supports:**
 
 | Field | Subfields |
 |---|---|
 | `008` | `.00-05` `.35-37` |
-| `020` | `.a` |
-| `100` | `.d` `.0` `.e` `.4` |
-| `110` | `.d` `.0` `.e` `.4` |
-| `264` | `.c` |
-| `300` | `.a` `.b` |
-| `700` | `.d` `.0` `.e` `.4` |
-| `710` | `.d` `.0` `.e` `.4` |
-
-#### Aggregation
-
-For all three methods, the method score is:
-
-``` text
-sum of applicable comparison scores / number of applicable comparisons
-```
-
-**Requires:** gold or platinum
+| `020` | `.ind1` `.ind2` `.a` |
+| `041` | `.ind1` `.ind2` |
+| `100` | `.ind1` `.ind2` `.d` `.0` `.e` `.4` |
+| `110` | `.ind1` `.ind2` `.d` `.0` `.e` `.4` |
+| `245` | `.ind1` `.ind2` |
+| `264` | `.ind1` `.ind2` `.c` |
+| `300` | `.ind1` `.ind2` `.a` `.b` |
+| `490` | `.ind1` `.ind2` |
+| `700` | `.ind1` `.ind2` `.d` `.0` `.e` `.4` |
+| `710` | `.ind1` `.ind2` `.d` `.0` `.e` `.4` |
 
 [↑ Back to all evaluation methods](#evaluation-methods)
 
@@ -694,7 +686,72 @@ Every executed criterion is listed in the diagnostic output under either `passed
 
 ### Method: Human Rating
 
-Coming soon.
+Unlike the other evaluation methods, `human-rating` is not automated but relies on human judgment to assess the quality of MARC records. It provides a browser-based interface where the eval record is displayed alongside images of the source PDF. Optionally, gold and/or platinum reference records can also be provided and displayed for comparison. For mapped fields, reference record occurrences are reordered and aligned with the eval record according to the [mapping](#mapping). Ratings can be assigned at three levels:
+
+- **Document:** an overall assessment of the eval record.
+- **Field:** an assessment of each selected MARC field occurrence.
+- **Subfield:** an assessment of each selected subfield occurrence.
+
+All applicable document, field, and subfield ratings must be provided to complete a document. Each rating is converted into a normalized score:
+
+| Rating | Score |
+|---|---|
+| Excellent | `1.0` |
+| Good | `0.66` |
+| OK | `0.33` |
+| Bad | `0.0` |
+
+#### Aggregation
+
+For each field occurrence, the field score combines its direct rating with the mean of its rated subfields:
+
+```text
+field score = (field rating + mean of subfield ratings) / 2
+```
+
+If no subfields are rated, the field score equals the direct field rating. The document score is calculated in the same way:
+
+```text
+document score = (document rating + mean of field scores) / 2
+```
+
+Repeated occurrences of the same field contribute independently and with equal weight. The resulting document score contributes to the overall document score like any other method score.
+
+#### Rating Sessions
+
+When selected, `human-rating` starts a local browser-based rating session after the automated methods have finished. For example:
+
+```bash
+libralens --eval records/ --pdf pdf/ --output results/
+```
+
+If methods are selected automatically, `human-rating` is included when both PDF documents and an output directory are provided. Gold and platinum records are optional. To resume an existing session without rerunning the evaluation, use:
+
+```bash
+libralens annotate results/
+```
+
+Completed ratings are saved in the output directory and incorporated into the evaluation results.
+
+**Requires:** PDF and output directory
+
+**Supports:**
+
+| Field | Subfields |
+|---|---|
+| `008` | `.00-05` `.35-37` |
+| `020` | `.a` |
+| `041` | `.a` |
+| `100` | `.a` `.b` `.d` `.0` `.e` `.4` |
+| `110` | `.a` `.b` `.d` `.0` `.e` `.4` |
+| `245` | `.a` `.b` `.c` `.d` |
+| `264` | `.a` `.b` `.c` |
+| `300` | `.a` `.b` |
+| `490` | `.a` |
+| `700` | `.a` `.b` `.d` `.0` `.e` `.4` |
+| `710` | `.a` `.b` `.d` `.0` `.e` `.4` |
+
+[↑ Back to all evaluation methods](#evaluation-methods)
 
 ## Configuration
 
@@ -757,20 +814,20 @@ The API key can be omitted, depending on the used model (e.g. locally hosted).
 
 ### MARC Scope
 
-Aggregating all methods, LibraLens currently supports the following MARC 21 fields and subfields:
+Aggregating all methods, LibraLens currently supports the following MARC 21 fields, subfields and indicators:
 
 ```
 008.00-05, 008.35-37
-020.a
-041.a
-100.a, 100.b, 100.d, 100.0, 100.e, 100.4
-110.a, 110.b, 110.d, 110.0, 110.e, 110.4
-245.a, 245.b, 245.c, 245.d
-264.a, 264.b, 264.c
-300.a, 300.b
-490.a
-700.a, 700.b, 700.d, 700.0, 700.e, 700.4
-710.a, 710.b, 710.d, 710.0, 710.e, 710.4
+020.ind1, 020.ind2, 020.a
+041.ind1, 041.ind2, 041.a
+100.ind1, 100.ind2, 100.a, 100.b, 100.d, 100.0, 100.e, 100.4
+110.ind1, 110.ind2, 110.a, 110.b, 110.d, 110.0, 110.e, 110.4
+245.ind1, 245.ind2, 245.a, 245.b, 245.c, 245.d
+264.ind1, 264.ind2, 264.a, 264.b, 264.c
+300.ind1, 300.ind2, 300.a, 300.b
+490.ind1, 490.ind2, 490.a
+700.ind1, 700.ind2, 700.a, 700.b, 700.d, 700.0, 700.e, 700.4
+710.ind1, 710.ind2, 710.a, 710.b, 710.d, 710.0, 710.e, 710.4
 ```
 
 This set also defines which data is written to disk when using the `--output` option.
