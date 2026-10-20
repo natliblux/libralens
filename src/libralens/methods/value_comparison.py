@@ -142,4 +142,7 @@ class ValueComparisonMethod(BaseMethod):
 
     @staticmethod
     def get_subfield(field: dict, code: str) -> str | None:
+
+        if code in {"ind1", "ind2"}:
+            return field.get(code)
         return next((subfield["value"] for subfield in field["subfields"] if subfield["code"] == code), None)
