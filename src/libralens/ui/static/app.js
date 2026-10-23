@@ -4,9 +4,8 @@ let totalDocuments = 0;
 let selectedFields = {};
 let rating = null;
 let dirty = false;
-let currentEvalFields = [];
+let currentRows = [];
 let currentRecords = null;
-let currentMappings = null;
 let expandedRecordsHeight = 0;
 let saved = false;
 
@@ -29,24 +28,25 @@ function element(tag, className = "", text = "") {
 }
 
 function isRatingComplete() {
+
     if (!rating?.rating) return false;
+    const evalFields = new Map(
+        (currentRecords.eval || []).map(field => [field.id, field])
+    );
 
-    for (const field of currentEvalFields) {
-        if (!Object.hasOwn(selectedFields, field.tag)) continue;
-
-        const fieldRating = rating.fields[String(field.id)];
-
+    for (const row of currentRows) {
+        if (!row.selected) continue;
+        const fieldRating = rating.fields[row.id];
         if (!fieldRating?.rating) return false;
-
+        if (row.eval === null) continue;
+        const field = evalFields.get(row.eval);
         for (const subfield of field.subfields || []) {
-            if (!selectedFields[field.tag].includes(subfield.code)) continue;
-
+            if (!selectedFields[field.tag]?.includes(subfield.code)) continue;
             if (!fieldRating.subfields?.[String(subfield.id)]) {
                 return false;
             }
         }
     }
-
     return true;
 }
 
@@ -87,55 +87,77 @@ function updateImageColumnHeight() {
 
 function measureExpandedRecordsHeight() {
     const records = document.getElementById("records");
-    const collapsed = [...records.querySelectorAll(".collection-hidden")];
+    const collapsed = [...records.querySelectorAll(".subfield-hidden")];
 
     for (const cell of collapsed) {
-        cell.classList.remove("collection-hidden");
+        cell.classList.remove("subfield-hidden");
     }
 
     expandedRecordsHeight = records.getBoundingClientRect().height;
 
     for (const cell of collapsed) {
-        cell.classList.add("collection-hidden");
+        cell.classList.add("subfield-hidden");
     }
 
     updateImageColumnHeight();
 }
 
-function toggleCollection(collectionId) {
-    const cells = document.querySelectorAll(`[data-collection="${collectionId}"]`);
-    const collapsed = !cells[0].classList.contains("collapsed");
+function toggleField(fieldId) {
 
+    const cells = document.querySelectorAll(`[data-field="${fieldId}"]`);
+    const toggle = cells[0].querySelector(".field-toggle");
+    const collapsed = toggle.textContent === "▼";
     for (const cell of cells) {
-        cell.classList.toggle("collapsed", collapsed);
-
-        if (collapsed && cell.dataset.collectionFirst !== "true") {
-            cell.classList.add("collection-hidden");
-        } else {
-            cell.classList.remove("collection-hidden");
-        }
-
-        const toggle = cell.querySelector(".field-toggle");
-        if (toggle) {
-            toggle.textContent = collapsed ? "▶" : "▼";
-            toggle.title = collapsed ? "Expand collection" : "Collapse collection";
+        if (cell.classList.contains("subfield-cell")) {
+            cell.classList.toggle("subfield-hidden", collapsed);
         }
     }
+    toggle.textContent = collapsed ? "▶" : "▼";
+    toggle.title = collapsed ? "Expand field" : "Collapse field";
 }
 
-function renderField(field, editable, collectionId, first) {
+function renderMissingField(row, fieldId, collapsible) {
+
+    const container = element("div", "field field-empty field-main");
+    container.dataset.field = fieldId;
+
+    const header = element("div", "field-header");
+    if (collapsible) {
+        const toggle = element("button", "field-toggle", "▼");
+        toggle.type = "button";
+        toggle.title = "Collapse field";
+        toggle.addEventListener("click", () => toggleField(fieldId));
+        header.append(toggle);
+    } else {
+        header.append(element("span", "field-toggle-spacer"));
+    }
+    header.append(element("span", "tag", row.tag));
+
+    if (row.selected) {
+        const id = row.id;
+        const fieldRating = rating.fields[id] || { rating: null, subfields: {} };
+
+        header.append(ratingGroup(`field-${id}`, fieldRating.rating, value => {
+            rating.fields[id] = { rating: value, subfields: {} };
+        }, "field-rating"));
+    }
+
+    container.append(header);
+    return container;
+}
+
+function renderField(field, editable, fieldId, collapsible) {
 
     const container = element("div", "field field-main");
-    container.dataset.collection = collectionId;
-    container.dataset.collectionFirst = first;
+    container.dataset.field = fieldId;
 
     const header = element("div", "field-header");
 
-    if (editable && first) {
+    if (editable && collapsible) {
         const toggle = element("button", "field-toggle", "▼");
         toggle.type = "button";
-        toggle.title = "Collapse collection";
-        toggle.addEventListener("click", () => toggleCollection(collectionId));
+        toggle.title = "Collapse field";
+        toggle.addEventListener("click", () => toggleField(fieldId));
         header.append(toggle);
     } else {
         header.append(element("span", "field-toggle-spacer"));
@@ -192,10 +214,10 @@ function renderField(field, editable, collectionId, first) {
     return container;
 }
 
-function renderSubfield(field, subfield, editable, collectionId) {
+function renderSubfield(field, subfield, editable, rowId) {
+
     const container = element("div", "field subfield-cell");
-    container.dataset.collection = collectionId;
-    container.dataset.collectionFirst = "false";
+    container.dataset.field = rowId;
 
     if (!subfield) {
         container.classList.add("subfield-empty");
@@ -225,113 +247,8 @@ function renderSubfield(field, subfield, editable, collectionId) {
     return container;
 }
 
-function buildDisplayRows(records, mappings) {
-    const evalFields = records.eval || [];
-    const goldFields = records.gold || [];
-    const platinumFields = records.platinum || [];
+function renderRecords(records, rows) {
 
-    const references = {
-        gold: goldFields,
-        platinum: platinumFields
-    };
-
-    const used = {
-        gold: new Set(),
-        platinum: new Set()
-    };
-
-    const lookup = {};
-
-    for (const name of ["gold", "platinum"]) {
-        lookup[name] = new Map(references[name].map(field => [String(field.id), field]));
-    }
-
-    const rows = [];
-
-    // Align reference fields with eval.
-    for (const evalField of evalFields) {
-        const row = { eval: evalField, gold: null, platinum: null };
-
-        for (const name of ["gold", "platinum"]) {
-            const mapping = mappings[`eval_to_${name}`];
-            const mappedId = mapping?.[String(evalField.id)];
-
-            if (mappedId !== undefined) {
-                const field = lookup[name].get(String(mappedId));
-
-                if (field) {
-                    row[name] = field;
-                    used[name].add(String(field.id));
-                }
-            }
-        }
-
-        rows.push(row);
-    }
-
-    // Fall back to matching by tag and occurrence for unmapped eval fields.
-    for (const row of rows) {
-        for (const name of ["gold", "platinum"]) {
-            if (row[name]) continue;
-
-            const field = references[name].find(field =>
-                field.tag === row.eval.tag && !used[name].has(String(field.id))
-            );
-
-            if (field) {
-                row[name] = field;
-                used[name].add(String(field.id));
-            }
-        }
-    }
-
-    // Align remaining gold and platinum fields.
-    const goldToPlatinum = mappings.gold_to_platinum || {};
-
-    for (const goldField of goldFields) {
-        if (used.gold.has(String(goldField.id))) continue;
-
-        const mappedId = goldToPlatinum[String(goldField.id)];
-        let platinumField = mappedId !== undefined
-            ? lookup.platinum.get(String(mappedId))
-            : null;
-
-        if (!platinumField || used.platinum.has(String(platinumField.id))) {
-            platinumField = platinumFields.find(field =>
-                field.tag === goldField.tag && !used.platinum.has(String(field.id))
-            );
-        }
-
-        const available = !!platinumField;
-
-        rows.push({
-            eval: null,
-            gold: goldField,
-            platinum: available ? platinumField : null
-        });
-
-        used.gold.add(String(goldField.id));
-
-        if (available) {
-            used.platinum.add(String(platinumField.id));
-        }
-    }
-
-    // Append remaining unmatched platinum fields.
-    for (const platinumField of platinumFields) {
-        if (used.platinum.has(String(platinumField.id))) continue;
-
-        rows.push({
-            eval: null,
-            gold: null,
-            platinum: platinumField
-        });
-    }
-
-    return rows;
-}
-
-function renderRecords(records, mappings) {
     const container = document.getElementById("records");
     container.replaceChildren();
 
@@ -340,47 +257,42 @@ function renderRecords(records, mappings) {
 
     document.querySelector(".document-content").style.setProperty("--record-columns", names.length);
 
-    const rows = buildDisplayRows(records, mappings);
+    const lookup = {};
+
+    for (const name of names) {
+        lookup[name] = new Map(records[name].map(field => [field.id, field]));
+    }
 
     for (const name of names) {
         container.append(element("h2", "record-title", name.toUpperCase()));
     }
 
-    let collectionIndex = -1;
-    let previousTag = null;
-
     for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
 
-        if (row.eval) {
-            if (row.eval.tag !== previousTag) {
-                collectionIndex++;
-                previousTag = row.eval.tag;
-            }
-        } else {
-            collectionIndex++;
-            previousTag = null;
-        }
+        const fields = names.map(name =>
+            row[name] !== null ? lookup[name].get(row[name]) : null
+        );
 
-        const collectionId = `collection-${collectionIndex}`;
-        const first = i === 0 || rows[i - 1].eval?.tag !== row.eval?.tag;
-        const fields = names.map(name => row[name]);
+        const fieldId = String(i);
+        const collapsible = fields.some(field => (field?.subfields?.length || 0) > 0);
 
         // Field header row
         for (let j = 0; j < names.length; j++) {
             const field = fields[j];
 
             if (field) {
-                container.append(renderField(field, names[j] === "eval", collectionId, first));
+                container.append(renderField(field, names[j] === "eval", fieldId, collapsible));
+            } else if (names[j] === "eval") {
+                container.append(renderMissingField(row, fieldId, collapsible));
             } else {
                 const empty = element("div", "field field-empty field-main");
-                empty.dataset.collection = collectionId;
-                empty.dataset.collectionFirst = first;
+                empty.dataset.field = fieldId;
                 container.append(empty);
             }
         }
 
-        // Preserve exact subfield alignment by code and occurrence
+        // Preserve exact subfield alignment by code and occurrence.
         const codes = new Set();
 
         for (const field of fields) {
@@ -397,7 +309,7 @@ function renderRecords(records, mappings) {
             for (let k = 0; k < maxCount; k++) {
                 for (let j = 0; j < names.length; j++) {
                     const subfield = groupedSubfields[j][code]?.[k] || null;
-                    container.append(renderSubfield(fields[j], subfield, names[j] === "eval", collectionId));
+                    container.append(renderSubfield(fields[j], subfield, names[j] === "eval", fieldId));
                 }
             }
         }
@@ -439,9 +351,10 @@ function renderImages(images) {
 }
 
 function renderDocument(data) {
+    
     rating = structuredClone(data.rating);
     rating.fields ||= {};
-    currentEvalFields = data.records.eval;
+    currentRows = data.rows;
 
     const ratingContainer = document.getElementById("document-rating");
     ratingContainer.replaceChildren();
@@ -452,10 +365,9 @@ function renderDocument(data) {
     }));
 
     currentRecords = data.records;
-    currentMappings = data.mappings;
 
     renderImages(data.images);
-    renderRecords(currentRecords, currentMappings);
+    renderRecords(currentRecords, currentRows);
 
     requestAnimationFrame(() => {
         measureExpandedRecordsHeight();
@@ -536,10 +448,7 @@ async function init() {
         const session = await api("/api/session");
         totalDocuments = session.total;
         RATINGS = session.ratings;
-
-        const run = session.config.runs.find(run => run.method === "human-rating");
-        selectedFields = run.fields;
-
+        selectedFields = session.selected_fields;
         await loadDocument(session.initial_document);
     } catch (error) {
         alert(error.message);

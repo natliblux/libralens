@@ -44,7 +44,8 @@ def create_app(output: Path) -> FastAPI:
             "completed": completed,
             "total": config["n_documents"],
             "ratings": list(HUMAN_RATINGS),
-            "initial_document": session.initial_document()
+            "initial_document": session.initial_document(),
+            "selected_fields": session._get_selected_fields(),
         }
 
     @app.get("/api/documents/{document_id}")
@@ -66,11 +67,7 @@ def create_app(output: Path) -> FastAPI:
             parsed[name] = Record(path.read_text(encoding="utf-8"), InputFormat.XML) if path.is_file() else None
         document = Document(eval=parsed["eval"], gold=parsed["gold"], platinum=parsed["platinum"])
         records = {name: record.fields if record is not None else None for name, record in parsed.items()}
-        mappings = {
-            "eval_to_gold": document.eval_to_gold_mapping,
-            "eval_to_platinum": document.eval_to_platinum_mapping,
-            "gold_to_platinum": document.gold_to_platinum_mapping
-        }
+        rows = session.build_rows(document)
 
         images = sorted((directory / "images").glob("*.png")) if (directory / "images").exists() else []
 
@@ -79,7 +76,7 @@ def create_app(output: Path) -> FastAPI:
         return {
             "id": document_id,
             "records": records,
-            "mappings": mappings,
+            "rows": rows,
             "images": [f"/api/documents/{document_id}/images/{path.name}" for path in images],
             "rating": ratings["documents"][str(document_id)]
         }
