@@ -43,7 +43,8 @@ def create_app(output: Path) -> FastAPI:
             "config": config,
             "completed": completed,
             "total": config["n_documents"],
-            "ratings": list(HUMAN_RATINGS)
+            "ratings": list(HUMAN_RATINGS),
+            "initial_document": session.initial_document()
         }
 
     @app.get("/api/documents/{document_id}")

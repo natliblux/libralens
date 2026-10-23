@@ -516,7 +516,7 @@ async function init() {
         const run = session.config.runs.find(run => run.method === "human-rating");
         selectedFields = run.fields;
 
-        await loadDocument(0);
+        await loadDocument(session.initial_document);
     } catch (error) {
         alert(error.message);
     }

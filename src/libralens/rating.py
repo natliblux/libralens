@@ -235,3 +235,13 @@ class RatingSession:
             self._update_results(document_id, rating, record, all_completed)
 
         return completed
+
+    def initial_document(self) -> int:
+
+        documents = self.load_ratings()["documents"]
+
+        for document_id, document in documents.items():
+            if not document["completed"]:
+                return int(document_id)
+
+        return max(len(documents) - 1, 0)
