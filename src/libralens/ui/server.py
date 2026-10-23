@@ -67,8 +67,9 @@ def create_app(output: Path) -> FastAPI:
         document = Document(eval=parsed["eval"], gold=parsed["gold"], platinum=parsed["platinum"])
         records = {name: record.fields if record is not None else None for name, record in parsed.items()}
         mappings = {
-            "gold": document.gold_mapping,
-            "platinum": document.platinum_mapping
+            "eval_to_gold": document.eval_to_gold_mapping,
+            "eval_to_platinum": document.eval_to_platinum_mapping,
+            "gold_to_platinum": document.gold_to_platinum_mapping
         }
 
         images = sorted((directory / "images").glob("*.png")) if (directory / "images").exists() else []

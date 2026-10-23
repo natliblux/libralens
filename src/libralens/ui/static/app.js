@@ -248,11 +248,13 @@ function buildDisplayRows(records, mappings) {
 
     const rows = [];
 
+    // Align reference fields with eval.
     for (const evalField of evalFields) {
         const row = { eval: evalField, gold: null, platinum: null };
 
         for (const name of ["gold", "platinum"]) {
-            const mappedId = mappings[name]?.[String(evalField.id)];
+            const mapping = mappings[`eval_to_${name}`];
+            const mappedId = mapping?.[String(evalField.id)];
 
             if (mappedId !== undefined) {
                 const field = lookup[name].get(String(mappedId));
@@ -267,7 +269,7 @@ function buildDisplayRows(records, mappings) {
         rows.push(row);
     }
 
-    // Fall back to matching by tag and occurrence for unmapped fields.
+    // Fall back to matching by tag and occurrence for unmapped eval fields.
     for (const row of rows) {
         for (const name of ["gold", "platinum"]) {
             if (row[name]) continue;
@@ -283,24 +285,46 @@ function buildDisplayRows(records, mappings) {
         }
     }
 
-    // Append unmatched reference fields.
-    const remaining = Math.max(
-        ...["gold", "platinum"].map(name =>
-            references[name].filter(field => !used[name].has(String(field.id))).length
-        )
-    );
+    // Align remaining gold and platinum fields.
+    const goldToPlatinum = mappings.gold_to_platinum || {};
 
-    const unmatched = {};
+    for (const goldField of goldFields) {
+        if (used.gold.has(String(goldField.id))) continue;
 
-    for (const name of ["gold", "platinum"]) {
-        unmatched[name] = references[name].filter(field => !used[name].has(String(field.id)));
-    }
+        const mappedId = goldToPlatinum[String(goldField.id)];
+        let platinumField = mappedId !== undefined
+            ? lookup.platinum.get(String(mappedId))
+            : null;
 
-    for (let i = 0; i < remaining; i++) {
+        if (!platinumField || used.platinum.has(String(platinumField.id))) {
+            platinumField = platinumFields.find(field =>
+                field.tag === goldField.tag && !used.platinum.has(String(field.id))
+            );
+        }
+
+        const available = !!platinumField;
+
         rows.push({
             eval: null,
-            gold: unmatched.gold[i] || null,
-            platinum: unmatched.platinum[i] || null
+            gold: goldField,
+            platinum: available ? platinumField : null
+        });
+
+        used.gold.add(String(goldField.id));
+
+        if (available) {
+            used.platinum.add(String(platinumField.id));
+        }
+    }
+
+    // Append remaining unmatched platinum fields.
+    for (const platinumField of platinumFields) {
+        if (used.platinum.has(String(platinumField.id))) continue;
+
+        rows.push({
+            eval: null,
+            gold: null,
+            platinum: platinumField
         });
     }
 

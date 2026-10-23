@@ -13,7 +13,7 @@ class ValueComparisonMethod(BaseMethod):
         scores = []
         info = {}
 
-        references = [(doc.gold, doc.gold_mapping, "gold"), (doc.platinum, doc.platinum_mapping, "platinum")]
+        references = [(doc.gold, doc.eval_to_gold_mapping, "gold"), (doc.platinum, doc.eval_to_platinum_mapping, "platinum")]
 
         for reference, mapping, name in references:
             if reference is None:

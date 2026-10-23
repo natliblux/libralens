@@ -20,5 +20,11 @@ class Document:
         self.text = text
         self.pdf = pdf
         self.text_normalized = (normalize_text(text) if text is not None else None)
-        self.gold_mapping = (create_mapping(self.eval, self.gold) if self.gold is not None else {})
-        self.platinum_mapping = (create_mapping(self.eval, self.platinum) if self.platinum is not None else {})
+        self.eval_to_gold_mapping = (create_mapping(self.eval, self.gold) if self.gold is not None else {})
+        self.eval_to_platinum_mapping = (create_mapping(self.eval, self.platinum) if self.platinum is not None else {})
+        self.gold_to_platinum_mapping = (create_mapping(self.gold, self.platinum) if self.gold is not None and self.platinum is not None else {})
+
+        for gold_id, platinum_id in self.gold_to_platinum_mapping.items():
+            gold = next(f for f in self.gold.fields if f["id"] == gold_id)
+            platinum = next(f for f in self.platinum.fields if f["id"] == platinum_id)
+            print(f"{gold_id} ({gold['tag']}) -> {platinum_id} ({platinum['tag']})")
