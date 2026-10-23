@@ -213,7 +213,7 @@ class LibraLens:
         if self.output.exists() and not self.output.is_dir():
             raise ValueError(f"output path is not a directory: {self.output}")
 
-        if (self.output / "session.json").exists() or (self.output / "ratings.json").exists():
+        if self.output.exists():
             raise ValueError(f"the following output directory cannot be overwritten: {self.output}")
 
     def _validate_requirements(self) -> None:
