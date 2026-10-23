@@ -4,7 +4,7 @@ from .run import Run
 import shutil
 from .funcs import record_to_xml, extract_pdf_images, compute_scores
 import json
-from .constants import FIELD_GROUPS
+from .constants import FIELD_GROUPS, HUMAN_RATING_PORT
 from .methods import METHODS
 from .loader import load_documents
 from .plot import create_results_plot
@@ -299,5 +299,5 @@ class LibraLens:
 
     @staticmethod
     def annotate(output: str | Path) -> None:
-        print("use the browser based interface for human-rating\n")
+        print(f"human-rating: open http://localhost:{HUMAN_RATING_PORT} in your browser")
         launch(output)
