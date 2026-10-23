@@ -457,7 +457,7 @@ function updateNavigation() {
     const button = document.getElementById("save-next");
     const last = documentId === totalDocuments - 1;
 
-    button.textContent = last ? (saved ? "Saved ✓" : "Save") : "Next →";
+    button.textContent = last ? (saved ? "Saved ✓" : "Save") : "Save →";
     button.disabled = !isRatingComplete() || saved;
 }
 
