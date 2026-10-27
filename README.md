@@ -1,5 +1,7 @@
 # LibraLens
 
+![Status](https://img.shields.io/badge/status-work_in_progress-orange)
+
 <p align="left">
   <img src="assets/logo.png" alt="LibraLens logo" width="400">
 </p>
@@ -68,13 +70,16 @@ libralens --eval [path-to-xml-file] --gold [path-to-gold-xml]
 
 ### Documents
 
-The basic unit evaluated by LibraLens is a document. A document can contain:
+The basic unit evaluated by LibraLens is a document. A document consists of
 
 - an **eval** record to be evaluated (mandatory)
+
+and may additionally contain
+
 - a **gold** reference record
 - a **platinum** reference record
-- the plain **text** of the underlying PDF
-- the source **PDF**
+- the plain **text** of the source PDF
+- the source **PDF** itself
 
 Records can be provided as individual files or directories containing multiple files. LibraLens supports `.xml` and `.txt` formats for MARC records. Plain text can be provided as a `.txt` (text is read directly) or `.pdf` (LibraLens PDF text extraction) file. XML files may contain one or multiple records, while text files contain a single record. Corresponding eval, reference, and plain-text data is matched as described in [Document Matching](#document-matching).
 
