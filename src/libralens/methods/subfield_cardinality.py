@@ -27,7 +27,7 @@ class SubfieldCardinality(BaseMethod):
         info = {}
 
         references = [
-            (doc.gold, doc.eva_to_gold_mapping, "gold"),
+            (doc.gold, doc.eval_to_gold_mapping, "gold"),
             (doc.platinum, doc.eval_to_platinum_mapping, "platinum"),
         ]
 
