@@ -1,7 +1,9 @@
-*.pyc
 __pycache__/
-.venv/
+*.py[cod]
 *.egg-info/
-test_library.py
-.env
+dist/
+build/
 tests/
+.venv/
+.env
+test_library.py
