@@ -27,3 +27,4 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 libralens = ["data/*.json"]
+"libralens.ui" = ["static/*", "templates/*"]
