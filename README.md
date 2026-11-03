@@ -811,7 +811,7 @@ Some evaluation methods require access to an LLM. LibraLens supports endpoints e
 For example:
 ```bash
 export LIBRALENS_LLM_URL="https://api.openai.com/v1"
-export LIBRALENS_LLM_MODEL="gpt-5"
+export LIBRALENS_LLM_MODEL="gpt-6"
 export LIBRALENS_LLM_KEY="..."
 ```
 
@@ -821,18 +821,34 @@ The API key can be omitted, depending on the used model (e.g. locally hosted).
 
 Aggregating all methods, LibraLens currently supports the following MARC 21 fields, subfields and indicators:
 
-```
-008.00-05, 008.35-37
-020.ind1, 020.ind2, 020.a
-041.ind1, 041.ind2, 041.a
-100.ind1, 100.ind2, 100.a, 100.b, 100.d, 100.0, 100.e, 100.4
-110.ind1, 110.ind2, 110.a, 110.b, 110.d, 110.0, 110.e, 110.4
-245.ind1, 245.ind2, 245.a, 245.b, 245.c, 245.d
-264.ind1, 264.ind2, 264.a, 264.b, 264.c
-300.ind1, 300.ind2, 300.a, 300.b
-490.ind1, 490.ind2, 490.a
-700.ind1, 700.ind2, 700.a, 700.b, 700.d, 700.0, 700.e, 700.4
-710.ind1, 710.ind2, 710.a, 710.b, 710.d, 710.0, 710.e, 710.4
-```
+
+| Field | Subfield(s) | Supported methods |
+|---|---|---|
+| `008` | `.00-05` `.35-37` | [`field-validity`](#method-field-validity) [`exact-match`](#method-exact-match) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
+| `020` | `.ind1` `.ind2` | [`exact-match`](#method-exact-match) |
+| `020` | `.a` | [`field-validity`](#method-field-validity) [`text-match`](#method-text-match) [`exact-match`](#method-exact-match) [`subfield-cardinality`](#method-subfield-cardinality) [`record-usability`](#method-record-usability) [`human-rating`](#method-human-rating) |
+| `041` | `.ind1` `.ind2` | [`exact-match`](#method-exact-match) |
+| `041` | `.a` | [`field-validity`](#method-field-validity) [`f1-score`](#methods-set-comparisons) [`precision-score`](#methods-set-comparisons) [`recall-score`](#methods-set-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
+| `100` `700` | `.ind1` `.ind2` | [`exact-match`](#method-exact-match) |
+| `100` `700` | `.a` `.b` | [`text-match`](#method-text-match) [`common-substring`](#methods-fuzzy-comparisons) [`edit-distance`](#methods-fuzzy-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
+| `100` `700` | `.d` `.e` | [`exact-match`](#method-exact-match) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
+| `100` `700` | `.0` | [`exact-match`](#method-exact-match) [`f1-score`](#methods-set-comparisons) [`precision-score`](#methods-set-comparisons) [`recall-score`](#methods-set-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
+| `100` `700` | `.4` | [`field-validity`](#method-field-validity) [`exact-match`](#method-exact-match) [`f1-score`](#methods-set-comparisons) [`precision-score`](#methods-set-comparisons) [`recall-score`](#methods-set-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
+| `110` `710` | `.ind1` `.ind2` | [`exact-match`](#method-exact-match) |
+| `110` `710` | `.a` `.b` | [`text-match`](#method-text-match) [`common-substring`](#methods-fuzzy-comparisons) [`edit-distance`](#methods-fuzzy-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`record-usability`](#method-record-usability) [`human-rating`](#method-human-rating) |
+| `110` `710` | `.d` `.e` | [`exact-match`](#method-exact-match) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
+| `110` `710` | `.0` | [`exact-match`](#method-exact-match) [`f1-score`](#methods-set-comparisons) [`precision-score`](#methods-set-comparisons) [`recall-score`](#methods-set-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
+| `110` `710` | `.4` | [`field-validity`](#method-field-validity) [`exact-match`](#method-exact-match) [`f1-score`](#methods-set-comparisons) [`precision-score`](#methods-set-comparisons) [`recall-score`](#methods-set-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
+| `245` | `.ind1` `.ind2` | [`exact-match`](#method-exact-match) |
+| `245` | `.a` | [`text-match`](#method-text-match) [`common-substring`](#methods-fuzzy-comparisons) [`edit-distance`](#methods-fuzzy-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`record-usability`](#method-record-usability) [`human-rating`](#method-human-rating) |
+| `245` | `.b` `.d` | [`text-match`](#method-text-match) [`common-substring`](#methods-fuzzy-comparisons) [`edit-distance`](#methods-fuzzy-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
+| `245` | `.c` | [`common-substring`](#methods-fuzzy-comparisons) [`edit-distance`](#methods-fuzzy-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
+| `264` | `.ind1` `.ind2` | [`exact-match`](#method-exact-match) |
+| `264` | `.a` `.b` | [`text-match`](#method-text-match) [`common-substring`](#methods-fuzzy-comparisons) [`edit-distance`](#methods-fuzzy-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
+| `264` | `.c` | [`text-match`](#method-text-match) [`common-substring`](#methods-fuzzy-comparisons) [`edit-distance`](#methods-fuzzy-comparisons) [`exact-match`](#method-exact-match) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
+| `300` | `.ind1` `.ind2` | [`exact-match`](#method-exact-match) |
+| `300` | `.a` `.b` | [`exact-match`](#method-exact-match) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
+| `490` | `.ind1` `.ind2` | [`exact-match`](#method-exact-match) |
+| `490` | `.a` | [`text-match`](#method-text-match) [`common-substring`](#methods-fuzzy-comparisons) [`edit-distance`](#methods-fuzzy-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
 
 This set also defines which data is written to disk when using the `--output` option.
