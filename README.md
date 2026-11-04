@@ -38,6 +38,7 @@ LibraLens is designed as a toolbox, allowing different evaluation methods and MA
   - [Precision Score](#methods-set-comparisons)
   - [Recall Score](#methods-set-comparisons)
   - [Subfield Cardinality](#method-subfield-cardinality)
+  - [Entity Coverage](#method-entity-coverage)
   - [Record Usability](#method-record-usability)
   - [Human Rating](#method-human-rating)
 - [Configuration](#configuration)
@@ -360,7 +361,7 @@ Detailed diagnostics can be accessed on disk by passing the `--output` option.
 
 ## Evaluation Methods
 
-LibraLens currently provides the following 11 methods:
+LibraLens currently provides the following 12 methods:
 
 | Method | Requires | Purpose |
 |---|---|---|
@@ -373,8 +374,9 @@ LibraLens currently provides the following 11 methods:
 | [`precision-score`](#methods-set-comparisons) | Reference Record | Computes the precision score between the eval and reference record for values with unambiguous equality. |
 | [`recall-score`](#methods-set-comparisons) | Reference Record | Computes the recall score between the eval and reference record for values with unambiguous equality. |
 | [`subfield-cardinality`](#method-subfield-cardinality) | Reference Record | Compares the cardinality of selected fields and subfields in the eval and reference records. |
+| [`entity-coverage`](#method-entity-coverage) | [LLM](#llm-configuration) | Measures how well the name fields cover entities mentioned in the statement of responsibility. |
 | [`record-usability`](#method-record-usability) | Reference Record and [LLM](#llm-configuration) | Applies binary minimum-quality criteria to determine whether the record is usable. |
-| [`human-rating`](#method-human-rating) | PDF and Output | Provides web interface for humans to rate the eval record. |
+| [`human-rating`](#method-human-rating) | PDF and Output | Provides a web interface for humans to rate the eval record. |
 
 Methods requiring a reference record can use gold, platinum, or both. If both are supplied, the method is evaluated independently against each reference, and the two resulting scores are averaged.
 
@@ -656,6 +658,31 @@ The method score is calculated as the mean of all selected field and subfield sc
 
 [↑ Back to all evaluation methods](#evaluation-methods)
 
+### Method: Entity Coverage
+
+`entity-coverage` measures how well the name fields cover entities mentioned in the statement of responsibility.
+
+The method uses an LLM to identify distinct persons and corporate bodies in `245.c` and matches them against `100/700` and `110/710`. Subfields `.a` and `.b` are always both considered to compare against. Variations in punctuation, abbreviations, initials, spelling, and name ordering should not prevent matching. The method score is calculated as:
+
+``` text
+score = matched entities / identified entities in 245.c
+```
+
+Each entity contributes equally to the score, regardless of its type. Additional entities in the name fields do not affect the score. If no entities of the selected types are identified, the score is `None`.
+
+**Requires:** [LLM](#llm-configuration)
+
+**Supports:**
+
+| Field | Subfields |
+|---|---|
+| `100` | `.a` |
+| `110` | `.a` |
+| `700` | `.a` |
+| `710` | `.a` |
+
+[↑ Back to all evaluation methods](#evaluation-methods)
+
 ### Method: Record Usability
 
 `record-usability` applies binary minimum-quality criteria to determine whether the record is usable.
@@ -825,29 +852,39 @@ Aggregating all methods, LibraLens currently supports the following MARC 21 fiel
 | Field | Subfield(s) | Supported methods |
 |---|---|---|
 | `008` | `.00-05` `.35-37` | [`field-validity`](#method-field-validity) [`exact-match`](#method-exact-match) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
+| | | |
 | `020` | `.ind1` `.ind2` | [`exact-match`](#method-exact-match) |
 | `020` | `.a` | [`field-validity`](#method-field-validity) [`text-match`](#method-text-match) [`exact-match`](#method-exact-match) [`subfield-cardinality`](#method-subfield-cardinality) [`record-usability`](#method-record-usability) [`human-rating`](#method-human-rating) |
+| | | |
 | `041` | `.ind1` `.ind2` | [`exact-match`](#method-exact-match) |
 | `041` | `.a` | [`field-validity`](#method-field-validity) [`f1-score`](#methods-set-comparisons) [`precision-score`](#methods-set-comparisons) [`recall-score`](#methods-set-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
+| | | |
 | `100` `700` | `.ind1` `.ind2` | [`exact-match`](#method-exact-match) |
-| `100` `700` | `.a` `.b` | [`text-match`](#method-text-match) [`common-substring`](#methods-fuzzy-comparisons) [`edit-distance`](#methods-fuzzy-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
+| `100` `700` | `.a` | [`text-match`](#method-text-match) [`common-substring`](#methods-fuzzy-comparisons) [`edit-distance`](#methods-fuzzy-comparisons) [`entity-coverage`](#method-entity-coverage) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
+| `100` `700` | `.b` | [`text-match`](#method-text-match) [`common-substring`](#methods-fuzzy-comparisons) [`edit-distance`](#methods-fuzzy-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
 | `100` `700` | `.d` `.e` | [`exact-match`](#method-exact-match) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
 | `100` `700` | `.0` | [`exact-match`](#method-exact-match) [`f1-score`](#methods-set-comparisons) [`precision-score`](#methods-set-comparisons) [`recall-score`](#methods-set-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
 | `100` `700` | `.4` | [`field-validity`](#method-field-validity) [`exact-match`](#method-exact-match) [`f1-score`](#methods-set-comparisons) [`precision-score`](#methods-set-comparisons) [`recall-score`](#methods-set-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
+| | | |
 | `110` `710` | `.ind1` `.ind2` | [`exact-match`](#method-exact-match) |
-| `110` `710` | `.a` `.b` | [`text-match`](#method-text-match) [`common-substring`](#methods-fuzzy-comparisons) [`edit-distance`](#methods-fuzzy-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`record-usability`](#method-record-usability) [`human-rating`](#method-human-rating) |
+| `110` `710` | `.a` | [`text-match`](#method-text-match) [`common-substring`](#methods-fuzzy-comparisons) [`edit-distance`](#methods-fuzzy-comparisons) [`entity-coverage`](#method-entity-coverage) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
+| `110` `710` | `.b` | [`text-match`](#method-text-match) [`common-substring`](#methods-fuzzy-comparisons) [`edit-distance`](#methods-fuzzy-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
 | `110` `710` | `.d` `.e` | [`exact-match`](#method-exact-match) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
 | `110` `710` | `.0` | [`exact-match`](#method-exact-match) [`f1-score`](#methods-set-comparisons) [`precision-score`](#methods-set-comparisons) [`recall-score`](#methods-set-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
 | `110` `710` | `.4` | [`field-validity`](#method-field-validity) [`exact-match`](#method-exact-match) [`f1-score`](#methods-set-comparisons) [`precision-score`](#methods-set-comparisons) [`recall-score`](#methods-set-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
+| | | |
 | `245` | `.ind1` `.ind2` | [`exact-match`](#method-exact-match) |
 | `245` | `.a` | [`text-match`](#method-text-match) [`common-substring`](#methods-fuzzy-comparisons) [`edit-distance`](#methods-fuzzy-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`record-usability`](#method-record-usability) [`human-rating`](#method-human-rating) |
 | `245` | `.b` `.d` | [`text-match`](#method-text-match) [`common-substring`](#methods-fuzzy-comparisons) [`edit-distance`](#methods-fuzzy-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
 | `245` | `.c` | [`common-substring`](#methods-fuzzy-comparisons) [`edit-distance`](#methods-fuzzy-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
+| | | |
 | `264` | `.ind1` `.ind2` | [`exact-match`](#method-exact-match) |
 | `264` | `.a` `.b` | [`text-match`](#method-text-match) [`common-substring`](#methods-fuzzy-comparisons) [`edit-distance`](#methods-fuzzy-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
 | `264` | `.c` | [`text-match`](#method-text-match) [`common-substring`](#methods-fuzzy-comparisons) [`edit-distance`](#methods-fuzzy-comparisons) [`exact-match`](#method-exact-match) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
+| | | |
 | `300` | `.ind1` `.ind2` | [`exact-match`](#method-exact-match) |
 | `300` | `.a` `.b` | [`exact-match`](#method-exact-match) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
+| | | |
 | `490` | `.ind1` `.ind2` | [`exact-match`](#method-exact-match) |
 | `490` | `.a` | [`text-match`](#method-text-match) [`common-substring`](#methods-fuzzy-comparisons) [`edit-distance`](#methods-fuzzy-comparisons) [`subfield-cardinality`](#method-subfield-cardinality) [`human-rating`](#method-human-rating) |
 

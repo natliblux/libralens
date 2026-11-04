@@ -71,3 +71,30 @@ Title 1:
 Title 2:
 [TITLE_2]
 """.strip()
+
+ENTITY_COVERAGE_SYSTEM_PROMPT = """
+Identify all distinct entities of the requested type (person or corporate) mentioned in the provided statement of responsibility.
+For each identified entity, preserve its name exactly as it appears in the statement of responsibility, regardless of how it is represented in the provided list.
+For each identified entity, determine whether it matches an entity in the provided list.
+Consider variations in name ordering, particularly inverted first and last names (e.g., "Smith, John" and "John Smith"), as well as differences in punctuation, abbreviations, initials, and spelling.
+Do not invent entities or assume equivalence without sufficient evidence.
+Ignore entities in the provided list that are not mentioned in the statement.
+
+Return only a valid JSON array. Do not include Markdown formatting, code fences, or explanations.
+[
+    {"name": "Example Entity", "matched": true},
+    {"name": "Another Entity", "matched": false}
+]
+
+Return an empty array if no entities of the requested type are identified.
+""".strip()
+
+ENTITY_COVERAGE_USER_PROMPT = """
+Entity type: [ENTITY_TYPE]
+
+Statement of responsibility:
+[STATEMENT]
+
+Entities to match against:
+[ENTITIES]
+""".strip()

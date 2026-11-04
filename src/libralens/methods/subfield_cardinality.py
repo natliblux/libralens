@@ -1,7 +1,7 @@
 from .base import BaseMethod
 from ..constants import MAPPED_FIELDS, MAPPING_GROUPS
 
-class SubfieldCardinality(BaseMethod):
+class SubfieldCardinalityMethod(BaseMethod):
 
     name = "subfield-cardinality"
 
