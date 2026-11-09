@@ -3,52 +3,48 @@ import matplotlib.pyplot as plt
 import numpy as np
 from .constants import PLOT_RESOLUTION
 
-def create_results_plot(results: list[dict], methods: list[str], overall_score: float | None, output_path: str | Path) -> None:
+def create_results_plot(results: list[dict], runs: list[str], overall_score: float | None, output_path: str | Path) -> None:
 
     output_path = Path(output_path)
 
-    if not results or not methods:
+    if not results or not runs:
         return
 
     if len(results) <= PLOT_RESOLUTION:
-        _create_document_heatmap(results=results, methods=methods, overall_score=overall_score, output_path=output_path)
+        _create_document_heatmap(results=results, runs=runs, overall_score=overall_score, output_path=output_path)
     else:
-        _create_distribution_heatmap(results=results, methods=methods, overall_score=overall_score, output_path=output_path)
+        _create_distribution_heatmap(results=results, runs=runs, overall_score=overall_score, output_path=output_path)
 
 def _add_title(fig, overall_score: float | None) -> None:
 
     if overall_score is not None:
         fig.suptitle(f"dataset score: {overall_score:.3f}", fontsize=10)
 
-def _create_document_heatmap(results: list[dict], methods: list[str], overall_score: float | None, output_path: Path) -> None:
+def _create_document_heatmap(results: list[dict], runs: list[str], overall_score: float | None, output_path: Path) -> None:
 
-    values = np.full(
-        (len(results), len(methods)),
-        np.nan,
-        dtype=float,
-    )
+    values = np.full((len(results), len(runs)), np.nan, dtype=float)
 
     for row, result in enumerate(results):
-        for column, method in enumerate(methods):
-            score = result["methods"][method]["score"]
+        for column, run in enumerate(runs):
+            score = result["runs"].get(run, {}).get("score")
 
             if score is not None:
                 values[row, column] = score
 
-    figure_width = max(8, len(methods) * 1.8)
+    figure_width = max(8, len(runs) * 1.8)
     figure_height = max(4, len(results) * 0.55 + 2)
     fig, ax = plt.subplots(figsize=(figure_width, figure_height))
     cmap = plt.get_cmap("RdYlGn").copy()
     cmap.set_bad("lightgrey")
     image = ax.imshow(values, cmap=cmap, vmin=0, vmax=1, aspect="auto")
     _add_title(fig=fig, overall_score=overall_score)
-    ax.set_xticks(range(len(methods)))
-    ax.set_xticklabels(methods, rotation=30, ha="right")
+    ax.set_xticks(range(len(runs)))
+    ax.set_xticklabels(runs, rotation=30, ha="right")
     ax.set_yticks(range(len(results)))
     ax.set_yticklabels([f"doc {result['id']}" for result in results])
 
     for row in range(len(results)):
-        for column in range(len(methods)):
+        for column in range(len(runs)):
             value = values[row, column]
             if np.isnan(value):
                 text = "n/a"
@@ -62,21 +58,14 @@ def _create_document_heatmap(results: list[dict], methods: list[str], overall_sc
     fig.savefig(output_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
-def _create_distribution_heatmap(results: list[dict], methods: list[str], overall_score: float | None, output_path: Path) -> None:
+def _create_distribution_heatmap(results: list[dict], runs: list[str], overall_score: float | None, output_path: Path) -> None:
 
     bin_edges = np.linspace(0, 1, PLOT_RESOLUTION + 1)
-    values = np.zeros((PLOT_RESOLUTION, len(methods)), dtype=float)
-    applicable_counts = {}
+    values = np.zeros((PLOT_RESOLUTION, len(runs)), dtype=float)
 
-    for column, method in enumerate(methods):
+    for column, run in enumerate(runs):
 
-        scores = [
-            result["methods"][method]["score"]
-            for result in results
-            if result["methods"][method]["score"] is not None
-        ]
-
-        applicable_counts[method] = len(scores)
+        scores = [result["runs"][run]["score"] for result in results if run in result["runs"] and result["runs"][run]["score"] is not None]
 
         if not scores:
             values[:, column] = np.nan
@@ -86,7 +75,7 @@ def _create_distribution_heatmap(results: list[dict], methods: list[str], overal
         percentages = counts / len(scores)
         values[:, column] = percentages[::-1]
 
-    figure_width = max(8, len(methods) * 1.8)
+    figure_width = max(8, len(runs) * 1.8)
     figure_height = 11
     fig, ax = plt.subplots(figsize=(figure_width, figure_height))
     cmap = plt.get_cmap("Blues").copy()
@@ -95,14 +84,14 @@ def _create_distribution_heatmap(results: list[dict], methods: list[str], overal
     max_percentage = valid_values.max() if valid_values.size else 1
     image = ax.imshow(values, cmap=cmap, vmin=0, vmax=max_percentage, aspect="auto")
     _add_title(fig=fig, overall_score=overall_score)
-    ax.set_xticks(range(len(methods)))
-    ax.set_xticklabels(methods, rotation=30, ha="right")
+    ax.set_xticks(range(len(runs)))
+    ax.set_xticklabels(runs, rotation=30, ha="right")
     labels = [f"{bin_edges[i]:.2f}+" for i in reversed(range(PLOT_RESOLUTION))]
     ax.set_yticks(range(PLOT_RESOLUTION))
     ax.set_yticklabels(labels)
 
     for row in range(PLOT_RESOLUTION):
-        for column in range(len(methods)):
+        for column in range(len(runs)):
             value = values[row, column]
             if np.isnan(value):
                 text = "n/a"

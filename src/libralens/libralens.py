@@ -44,37 +44,25 @@ class LibraLens:
             raise ValueError("fields cannot be provided when runs are used")
 
         if runs is not None:
-            self.runs = [
-                Run(
-                    method=run.method,
-                    fields=run.fields
-                )
-                for run in runs
-            ]
+            self.runs = [Run(id=run.id, method=run.method, fields=run.fields) for run in runs]
         else:
             if methods is None:
                 methods = [name for name, cls in METHODS.items() if not self._missing_requirements(cls())]
             else:
                 methods = list(dict.fromkeys(methods))
-            self.runs = [
-                Run(
-                    method=method,
-                    fields=fields
-                )
-                for method in methods
-            ]
+            self.runs = [Run(id=method, method=method, fields=fields) for method in methods]
 
         self._validate_runs()
         for run in self.runs:
             run.fields = self._resolve_fields(run.fields, METHODS[run.method].supported_fields)
-        self.methods = [run.method for run in self.runs]
+        self.methods = list(dict.fromkeys(run.method for run in self.runs))
         self.fields = list(dict.fromkeys(field for run in self.runs for field in run.fields))
-        self.method_instances = {run.method: METHODS[run.method]() for run in self.runs}
+        self.method_instances = {run.id: METHODS[run.method]() for run in self.runs}
         self._validate_requirements()
-        self.llm = (LLM() if any(self.method_instances[run.method].requires_llm for run in self.runs) else None)
+        self.llm = LLM() if any(self.method_instances[run.id].requires_llm for run in self.runs) else None
         self.documents = load_documents(self.eval, self.gold, self.platinum, self.text, self.pdf)
         self.score = None
-        self.method_scores = {}
+        self.run_scores = {}
         self.document_scores = {}
         self.results = []
 
@@ -83,21 +71,22 @@ class LibraLens:
         if self.verbose:
             self._print_info()
 
-        self.results = [{"id": i, "methods": {}} for i in range(len(self.documents))]
+        self.results = [{"id": i, "runs": {}} for i in range(len(self.documents))]
 
-        method_width = max(len(run.method) for run in self.runs)
+        run_width = max(len(run.id) for run in self.runs)
 
         for run in self.runs:
 
-            method = self.method_instances[run.method]
+            method = self.method_instances[run.id]
             if method.deferred:
                 continue
 
-            method_results = method.run(docs=self.documents, fields=run.fields, llm=self.llm, verbose=self.verbose, desc=f"{run.method:<{method_width}}")
-            for i, result in enumerate(method_results):
-                self.results[i]["methods"][run.method] = result
+            method_results = method.run(docs=self.documents, fields=run.fields, llm=self.llm, verbose=self.verbose, desc=f"{run.id:<{run_width}}")
 
-        self._compute_scores()
+            for i, result in enumerate(method_results):
+                self.results[i]["runs"][run.id] = {"method": run.method, **result}
+
+        self.document_scores, self.run_scores, self.score = compute_scores(self.results, self.runs)
 
         if self.output:
             self._write_output()
@@ -105,14 +94,11 @@ class LibraLens:
                 RatingSession(self.output).create(self.runs, len(self.documents))
                 if open_ui:
                     self.annotate(self.output)
+
         if self.verbose:
             self._print_results()
 
         return self.results
-
-    def _compute_scores(self) -> None:
-
-        self.document_scores, self.method_scores, self.score = compute_scores(self.results, self.methods)
 
     def _format_fields(self, fields) -> str:
 
@@ -145,7 +131,7 @@ class LibraLens:
         print()
 
         for run in self.runs:
-            print(run.method)
+            print(f"{run.id} ({run.method})")
             print(f"  {self._format_fields(run.fields)}")
             print()
 
@@ -158,10 +144,10 @@ class LibraLens:
             print(f"  {score_str} document {document_id}")
 
         print()
-        print("method scores")
-        for method, score in self.method_scores.items():
+        print("run scores")
+        for run_id, score in self.run_scores.items():
             score_str = f"{score:.3f}" if score is not None else f"{'n/a':>5}"
-            print(f"  {score_str} {method}")
+            print(f"  {score_str} {run_id}")
 
         print()
         print("dataset score")
@@ -183,8 +169,8 @@ class LibraLens:
             json.dump(self.results, file, indent=4, ensure_ascii=False)
 
         # plot
-        completed_methods = [method for method in self.methods if method in self.method_scores]
-        create_results_plot(results=self.results, methods=completed_methods, overall_score=self.score, output_path=self.output / "results.png")
+        completed_runs = [run.id for run in self.runs if run.id in self.run_scores]
+        create_results_plot(results=self.results, runs=completed_runs, overall_score=self.score, output_path=self.output / "results.png")
 
         # document data
         width = len(str(len(self.documents) - 1))
@@ -219,7 +205,7 @@ class LibraLens:
     def _validate_requirements(self) -> None:
 
         for run in self.runs:
-            method = self.method_instances[run.method]
+            method = self.method_instances[run.id]
             missing = self._missing_requirements(method)
             if missing:
                 raise ValueError(f"method '{method.name}' requires: {', '.join(missing)}")
@@ -229,12 +215,18 @@ class LibraLens:
         if not self.runs:
             raise ValueError("at least one run must be provided")
 
-        methods = [run.method for run in self.runs]
+        ids = [run.id for run in self.runs]
 
-        if len(methods) != len(set(methods)):
-            raise ValueError("each method can only be run once")
+        if any(not isinstance(id, str) or not id.strip() for id in ids):
+            raise ValueError("run ids must be nonempty strings")
 
-        invalid_methods = [method for method in methods if method not in METHODS]
+        if len(ids) != len(set(ids)):
+            raise ValueError("run ids must be unique")
+
+        if sum(run.method == "human-rating" for run in self.runs) > 1:
+            raise ValueError("human-rating can only be configured once")
+
+        invalid_methods = [run.method for run in self.runs if run.method not in METHODS]
 
         if invalid_methods:
             raise ValueError(f"unsupported methods: {', '.join(invalid_methods)}")

@@ -6,47 +6,36 @@ from pathlib import Path
 from pathlib import Path
 import fitz
 from .constants import PDF_N_PAGES, PDF_LARGE_IMG_DIM, PDF_IMAGE_SCALE
+from .run import Run
 
-def compute_scores(results: list, methods: list) -> tuple:
+def compute_scores(results: list, runs: list[Run]) -> tuple:
 
     # per-document scores
     document_scores = {}
 
     for result in results:
-        scores = [
-            method_result["score"]
-            for method_result in result["methods"].values()
-            if method_result["score"] is not None
-        ]
+        scores = [result["runs"][run.id]["score"] for run in runs if run.id in result["runs"] and result["runs"][run.id]["score"] is not None]
 
         document_score = sum(scores) / len(scores) if scores else None
 
         result["score"] = document_score
         document_scores[result["id"]] = document_score
 
-    # per-method scores
-    method_scores = {}
+    # per-run scores
+    run_scores = {}
 
-    for method in methods:
-        scores = [
-            result["methods"][method]["score"]
-            for result in results
-            if method in result["methods"] and result["methods"][method]["score"] is not None
-        ]
+    for run in runs:
+        scores = [result["runs"][run.id]["score"] for result in results if run.id in result["runs"] and result["runs"][run.id]["score"] is not None]
 
         if scores:
-            method_scores[method] = sum(scores) / len(scores)
+            run_scores[run.id] = sum(scores) / len(scores)
 
     # overall score
-    scores = [
-        score
-        for score in document_scores.values()
-        if score is not None
-    ]
+    scores = [score for score in document_scores.values() if score is not None]
 
     overall_score = sum(scores) / len(scores) if scores else None
 
-    return document_scores, method_scores, overall_score
+    return document_scores, run_scores, overall_score
 
 def extract_pdf_images(pdf_path: Path, output_dir: Path) -> None:
 

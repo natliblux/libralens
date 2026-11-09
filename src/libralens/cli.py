@@ -20,35 +20,21 @@ def add_eval_arguments(parser):
 
 def evaluate(args):
 
-    if args.runs:
-        if args.fields is not None:
-            raise ValueError("fields cannot be provided together with runs")
+    if args.runs and args.fields is not None:
+        raise ValueError("fields cannot be provided together with runs")
 
-        runs = load_runs(args.runs)
-
-        libralens = LibraLens(
-            eval=args.eval,
-            runs=runs,
-            gold=args.gold,
-            platinum=args.platinum,
-            text=args.text,
-            pdf=args.pdf,
-            output=args.output,
-            verbose=True
-        )
-
-    else:
-        libralens = LibraLens(
-            eval=args.eval,
-            methods=args.methods,
-            fields=args.fields,
-            gold=args.gold,
-            platinum=args.platinum,
-            text=args.text,
-            pdf=args.pdf,
-            output=args.output,
-            verbose=True
-        )
+    libralens = LibraLens(
+        eval=args.eval,
+        methods=args.methods if not args.runs else None,
+        runs=load_runs(args.runs) if args.runs else None,
+        fields=args.fields,
+        gold=args.gold,
+        platinum=args.platinum,
+        text=args.text,
+        pdf=args.pdf,
+        output=args.output,
+        verbose=True
+    )
 
     libralens.evaluate()
 

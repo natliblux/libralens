@@ -88,7 +88,7 @@ The selected evaluation **methods** define what the documents require. For examp
 
 ### Methods
 
-An evaluation consists of one or more methods. Each method evaluates a particular aspect of the record and returns a normalized score between `0.0` and `1.0`, or `None` when no applicable evaluation can be performed. If no methods are specified, LibraLens automatically selects **all methods whose requirements are satisfied** by the provided inputs. For example, methods requiring a reference record are included only when gold and/or platinum is provided. This also applies to [human-rating](#method-human-rating), which is selected automatically when both PDF documents and an output directory are provided. To run specific methods instead, pass a list of strings:
+An evaluation consists of one or more runs, each executing an evaluation method. Each method evaluates a particular aspect of the record and returns a normalized score between `0.0` and `1.0`, or `None` when no applicable evaluation can be performed. If no methods are specified, LibraLens automatically selects **all methods whose requirements are satisfied** by the provided inputs. For example, methods requiring a reference record are included only when gold and/or platinum is provided. This also applies to [human-rating](#method-human-rating), which is selected automatically when both PDF documents and an output directory are provided. To run specific methods instead, pass a list of strings:
 
 ```python
 methods=["edit-distance", "text-match"]
@@ -149,30 +149,38 @@ Selecting a complete field (e.g. `245`) includes all subfields, position ranges 
 
 ### Runs
 
-For more complex evaluations, different methods can use different field selections through runs. With the Python library, runs are defined using `Run`:
+For more complex evaluations, runs allow the same method to be executed multiple times with different field selections. Each `Run` has a unique identifier (`id`), a method (`method`), and an optional field selection (`fields`).
+
+With the Python library, runs are defined using `Run`:
 
 ```python
 runs=[
-    Run(method="edit-distance", fields=["245", "700.a"]),
-    Run(method="text-match", fields=["020.a"])
+    Run(id="title_similarity", method="edit-distance", fields=["245.a", "245.b"]),
+    Run(id="author_similarity", method="edit-distance", fields=["100.a", "700.a"]),
+    Run(id="isbn_match", method="exact-match", fields=["020.a"])
 ]
 ```
 
-Alternatively, from the command line, runs are defined in a JSON file:
+Alternatively, from the command line, runs are defined in a JSON file containing a list of run configurations:
 
 ```json
-{
-    "runs": [
-        {
-            "method": "edit-distance",
-            "fields": ["245", "700.a"]
-        },
-        {
-            "method": "text-match",
-            "fields": ["020.a"]
-        }
-    ]
-}
+[
+    {
+        "id": "title_similarity",
+        "method": "edit-distance",
+        "fields": ["245.a", "245.b"]
+    },
+    {
+        "id": "author_similarity",
+        "method": "edit-distance",
+        "fields": ["100.a", "700.a"]
+    },
+    {
+        "id": "isbn_match",
+        "method": "exact-match",
+        "fields": ["020.a"]
+    }
+]
 ```
 and passed using:
 
@@ -222,9 +230,9 @@ from libralens import LibraLens, Run
 ll = LibraLens(
     eval="records/",
     runs=[
-        Run(method="edit-distance", fields=["100", "700"]),
-        Run(method="text-match", fields=["245.a"])
-    ],
+        Run(id="author_similarity", method="edit-distance", fields=["100", "700"]),
+        Run(id="title_text_match", method="text-match", fields=["245.a"])
+    ]
     gold="gold/",
     platinum="platinum/",
     text="text/",
@@ -257,7 +265,7 @@ All command-line options:
 |---|---|
 | `--eval` | provides eval records |
 | `--methods` | defines methods to use |
-| `--runs` | alternatively defines custom runs |
+| `--runs` | provides a JSON file defining custom runs |
 | `--fields` | defines fields to evaluate |
 | `--gold` | provides gold records |
 | `--platinum` | provides platinum records |
@@ -269,13 +277,13 @@ Run `libralens --help` for the complete command-line reference.
 
 ### Results
 
-Every selected method evaluates every document independently. Scores are aggregated at three levels:
+Every configured run evaluates every document independently. Each run executes a specific evaluation method on its selected fields and subfields. Scores are aggregated at three levels:
 
-- **Document score** — mean of the applicable method scores for one document.
-- **Method score** — mean score of a method across all documents for which it produced a score.
-- **Dataset score** — mean of the document scores.
+* **Document score** — mean of the applicable run scores for one document.
+* **Run score** — mean score of a run across all documents for which it produced a score.
+* **Dataset score** — mean of the document scores.
 
-Scores are normalized between `0.0` and `1.0`, with higher values representing better results. A method may return `None` when it cannot evaluate a particular document.
+Scores are normalized between `0.0` and `1.0`, with higher values representing better results. A run may return `None` when it cannot evaluate a particular document.
 
 #### Python Library
 
@@ -285,7 +293,7 @@ After calling `evaluate()`, results are available directly from the `LibraLens` 
 ll.evaluate()
 
 ll.score
-ll.method_scores
+ll.run_scores
 ll.document_scores
 ll.results
 ```
@@ -296,7 +304,7 @@ For example:
 print(ll.score)
 # 0.801
 
-print(ll.method_scores)
+print(ll.run_scores)
 # {
 #     "edit-distance": 0.917,
 #     "text-match": 0.685
@@ -318,14 +326,16 @@ print(ll.document_scores)
     {
         "id": 0,
         "score": 0.8,
-        "methods": {
-            "edit-distance": {
+        "runs": {
+            "title_similarity": {
+                "method": "edit-distance",
                 "score": 0.9,
                 "info": {
                     ...
                 }
             },
-            "text-match": {
+            "author_similarity": {
+                "method": "edit-distance",
                 "score": 0.7,
                 "info": {
                     ...
@@ -349,7 +359,7 @@ document scores
     n/a document 2
   0.770 document 3
 
-method scores
+run scores
   0.917 edit-distance
   0.685 text-match
 
@@ -747,7 +757,7 @@ If no subfields are rated, the field score equals the direct field rating. The d
 document score = (document rating + mean of field scores) / 2
 ```
 
-Repeated occurrences of the same field contribute independently and with equal weight. The resulting document score contributes to the overall document score like any other method score.
+Repeated occurrences of the same field contribute independently and with equal weight. The resulting document score contributes to the overall document score like any other run score.
 
 #### Rating Sessions
 
@@ -757,13 +767,15 @@ When selected, `human-rating` starts a local browser-based rating session after 
 libralens --eval records/ --pdf pdf/ --output results/
 ```
 
-If methods are selected automatically, `human-rating` is included when both PDF documents and an output directory are provided. Gold and platinum records are optional. To resume an existing session without rerunning the evaluation, use:
+If methods are selected automatically, `human-rating` is included when both PDF documents and an output directory are provided. Gold and platinum records are optional.
+
+Only one human-rating run can be configured per evaluation. This run can include multiple fields and subfields, all of which are rated within the same annotation session. To resume an existing session without rerunning the evaluation, use:
 
 ```bash
 libralens annotate results/
 ```
 
-Completed ratings are saved in the output directory and incorporated into the evaluation results.
+Completed ratings are saved in the output directory and incorporated into `results.json` under the configured human-rating run ID. Document and dataset scores are recalculated as ratings are completed. Once all documents have been rated, the results plot is regenerated to include human-rating scores.
 
 **Requires:** PDF and output directory
 

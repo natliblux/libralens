@@ -1,4 +1,5 @@
 import json
+from .run import Run
 from .document import Document
 from pathlib import Path
 from .funcs import compute_scores
@@ -17,6 +18,7 @@ class RatingSession:
         config = {
             "runs": [
                 {
+                    "id": run.id,
                     "method": run.method,
                     "fields": {field: sorted(subfields) for field, subfields in run.fields.items()}
                 }
@@ -253,24 +255,26 @@ class RatingSession:
         path = self.output / "results.json"
         results = json.loads(path.read_text(encoding="utf-8"))
 
+        config = json.loads((self.output / "session.json").read_text(encoding="utf-8"))
+        runs = [Run(id=run["id"], method=run["method"]) for run in config["runs"]]
+        human_run = next(run for run in runs if run.method == "human-rating")
+
         result = next(result for result in results if result["id"] == document_id)
-        result["methods"]["human-rating"] = {
+        result["runs"][human_run.id] = {
+            "method": human_run.method,
             "score": self._document_score(rating),
             "rating": HUMAN_RATINGS[rating["rating"]],
             "info": self._build_info(document, rating.get("fields", {}))
         }
 
-        config = json.loads((self.output / "session.json").read_text(encoding="utf-8"))
-        methods = [run["method"] for run in config["runs"]]
-
-        _, method_scores, overall_score = compute_scores(results, methods)
+        _, run_scores, overall_score = compute_scores(results, runs)
 
         path.write_text(json.dumps(results, indent=4, ensure_ascii=False), encoding="utf-8")
 
         if all_completed:
             create_results_plot(
                 results=results,
-                methods=[method for method in methods if method in method_scores],
+                runs=[run.id for run in runs if run.id in run_scores],
                 overall_score=overall_score,
                 output_path=self.output / "results.png"
             )
