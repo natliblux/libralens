@@ -93,7 +93,7 @@ class LibraLens:
             if "human-rating" in self.methods:
                 RatingSession(self.output).create(self.runs, len(self.documents))
                 if open_ui:
-                    self.annotate(self.output)
+                    self.rate(self.output)
 
         if self.verbose:
             self._print_results()
