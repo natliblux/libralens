@@ -290,6 +290,6 @@ class LibraLens:
         return missing
 
     @staticmethod
-    def annotate(output: str | Path) -> None:
+    def rate(output: str | Path) -> None:
         print(f"human-rating: open http://localhost:{HUMAN_RATING_PORT} in your browser")
         launch(output)

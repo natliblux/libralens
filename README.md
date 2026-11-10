@@ -772,7 +772,7 @@ If methods are selected automatically, `human-rating` is included when both PDF 
 Only one human-rating run can be configured per evaluation. This run can include multiple fields and subfields, all of which are rated within the same annotation session. To resume an existing session without rerunning the evaluation, use:
 
 ```bash
-libralens annotate results/
+libralens rate results/
 ```
 
 Completed ratings are saved in the output directory and incorporated into `results.json` under the configured human-rating run ID. Document and dataset scores are recalculated as ratings are completed. Once all documents have been rated, the results plot is regenerated to include human-rating scores.

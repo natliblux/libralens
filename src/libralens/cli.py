@@ -46,13 +46,13 @@ def main():
     eval_parser = subparsers.add_parser("eval", help="evaluate MARC records", prog="libralens")
     add_eval_arguments(eval_parser)
 
-    annotate_parser = subparsers.add_parser("annotate", help="open an existing rating session")
-    annotate_parser.add_argument("output", help="directory containing a rating session")
+    rating_parser = subparsers.add_parser("rate", help="open an existing rating session")
+    rating_parser.add_argument("output", help="directory containing a rating session")
 
     # Show evaluation arguments in top-level help
     parser.format_help = eval_parser.format_help
 
-    if len(sys.argv) > 1 and sys.argv[1] not in ("eval", "annotate", "-h", "--help"):
+    if len(sys.argv) > 1 and sys.argv[1] not in ("eval", "rate", "-h", "--help"):
         args = parser.parse_args(["eval"] + sys.argv[1:])
     else:
         args = parser.parse_args()
@@ -62,8 +62,8 @@ def main():
         return
 
     try:
-        if args.command == "annotate":
-            LibraLens.annotate(args.output)
+        if args.command == "rate":
+            LibraLens.rate(args.output)
         else:
             evaluate(args)
 
