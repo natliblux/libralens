@@ -181,7 +181,7 @@ class RatingSession:
 
         result = {}
 
-        for subfield in field.get("subfields", []):
+        for index, subfield in enumerate(field.get("subfields", [])):
 
             rating = ratings.get(str(subfield["id"]))
             if rating is None:
@@ -189,7 +189,7 @@ class RatingSession:
 
             code = subfield["code"]
             values = result.setdefault(code, [])
-            occurrence = sum(s["code"] == code for s in field["subfields"][:subfield["id"]])
+            occurrence = sum(s["code"] == code for s in field["subfields"][:index])
 
             while len(values) <= occurrence:
                 values.append(None)
@@ -260,11 +260,20 @@ class RatingSession:
         human_run = next(run for run in runs if run.method == "human-rating")
 
         result = next(result for result in results if result["id"] == document_id)
+        info = self._build_info(document, rating.get("fields", {}))
+        score = self._document_score(rating)
+
         result["runs"][human_run.id] = {
             "method": human_run.method,
-            "score": self._document_score(rating),
+            "score": score,
             "rating": HUMAN_RATINGS[rating["rating"]],
-            "info": self._build_info(document, rating.get("fields", {}))
+            "references": {
+                "none": {
+                    "score": score,
+                    **self._build_field_scores(info)
+                }
+            },
+            "info": info
         }
 
         _, run_scores, overall_score = compute_scores(results, runs)
@@ -417,3 +426,40 @@ class RatingSession:
             }
             for row in rows
         ]
+
+    def _build_field_scores(self, info: dict) -> dict:
+
+        checks = {}
+
+        for tag, occurrences in info.items():
+            for occurrence in occurrences:
+                if occurrence is None:
+                    continue
+
+                field = checks.setdefault(tag, {"score": []})
+
+                if occurrence["score"] is not None:
+                    field["score"].append(occurrence["score"])
+
+                for code, values in occurrence["subfields"].items():
+                    scores = [value["score"] for value in values if value is not None]
+                    field.setdefault(code, []).extend(scores)
+
+        for group in FIELD_GROUPS:
+            tags = sorted(group)
+            group_name = "/".join(tags)
+
+            group_checks = {key: list(scores) for key, scores in checks.get(group_name, {}).items()}
+
+            for tag in tags:
+                for key, scores in checks.get(tag, {}).items():
+                    group_checks.setdefault(key, []).extend(scores)
+
+            if group_checks:
+                checks[group_name] = group_checks
+
+        return {
+            tag: {key: sum(scores) / len(scores) for key, scores in values.items() if scores}
+            for tag, values in checks.items()
+            if any(values.values())
+        }

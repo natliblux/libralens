@@ -1,5 +1,6 @@
 from .base import BaseMethod
 from ..funcs import normalize_text
+from ..constants import FIELD_GROUPS
 
 class TextMatchMethod(BaseMethod):
 
@@ -154,8 +155,46 @@ class TextMatchMethod(BaseMethod):
 
         return {
             "score": score,
+            "references": {
+                "none": {
+                    "score": score,
+                    **self.build_field_scores(matched, unmatched)
+                }
+            } if score is not None else {},
             "info": {
                 "matched": matched,
-                "unmatched": unmatched,
-            },
+                "unmatched": unmatched
+            }
+        }
+
+    @staticmethod
+    def build_field_scores(matched: list[dict], unmatched: list[dict]) -> dict:
+
+        checks = {}
+
+        for entries, score in ((matched, 1.0), (unmatched, 0.0)):
+            for entry in entries:
+                tag = entry["field"]
+                subfield = "/".join(entry["subfields"])
+
+                field = checks.setdefault(tag, {"score": []})
+                field["score"].append(score)
+                field.setdefault(subfield, []).append(score)
+
+        for group in FIELD_GROUPS:
+            tags = sorted(group)
+            group_name = "/".join(tags)
+
+            group_checks = {}
+
+            for tag in tags:
+                for key, scores in checks.get(tag, {}).items():
+                    group_checks.setdefault(key, []).extend(scores)
+
+            if group_checks:
+                checks[group_name] = group_checks
+
+        return {
+            tag: {key: sum(scores) / len(scores) for key, scores in values.items()}
+            for tag, values in checks.items()
         }

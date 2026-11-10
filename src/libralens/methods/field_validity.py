@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from ..constants import GROUPED_FIELDS, MARC_LANGUAGE_CODES, MARC_RELATOR_CODES
+from ..constants import GROUPED_FIELDS, MARC_LANGUAGE_CODES, MARC_RELATOR_CODES, FIELD_GROUPS
 from .base import BaseMethod
 
 class FieldValidityMethod(BaseMethod):
@@ -40,6 +40,12 @@ class FieldValidityMethod(BaseMethod):
 
         return {
             "score": score,
+            "references": {
+                "none": {
+                    "score": score,
+                    **self.build_field_scores(valid, invalid)
+                }
+            } if score is not None else {},
             "info": {
                 "valid": valid,
                 "invalid": invalid
@@ -53,7 +59,7 @@ class FieldValidityMethod(BaseMethod):
 
         result = {
             "field": "020",
-            "part": "$a",
+            "subfield": "a",
             "value": record.isbn_normalized,
         }
 
@@ -68,7 +74,7 @@ class FieldValidityMethod(BaseMethod):
 
             result = {
                 "field": "041",
-                "part": "$a",
+                "subfield": "a",
                 "value": lang_code,
             }
 
@@ -89,7 +95,7 @@ class FieldValidityMethod(BaseMethod):
                     continue
                 result = {
                     "field": "008",
-                    "part": code,
+                    "subfield": code,
                     "value": value,
                 }
                 if code == "00-05":
@@ -111,7 +117,7 @@ class FieldValidityMethod(BaseMethod):
 
                 result = {
                     "field": tag,
-                    "part": "$4",
+                    "subfield": "4",
                     "value": relator,
                 }
 
@@ -174,3 +180,40 @@ class FieldValidityMethod(BaseMethod):
             return True
         except ValueError:
             return False
+
+    @staticmethod
+    def build_field_scores(valid: list[dict], invalid: list[dict]) -> dict:
+
+        checks = {}
+
+        for entries, score in ((valid, 1.0), (invalid, 0.0)):
+            for entry in entries:
+                tag = entry["field"]
+                part = entry["subfield"]
+
+                checks.setdefault(tag, {}).setdefault(part, []).append(score)
+
+        for group in FIELD_GROUPS:
+            tags = sorted(group)
+            group_name = "/".join(tags)
+
+            group_checks = {}
+
+            for tag in tags:
+                for part, scores in checks.get(tag, {}).items():
+                    group_checks.setdefault(part, []).extend(scores)
+
+            if group_checks:
+                checks[group_name] = group_checks
+
+        fields = {}
+
+        for tag, parts in checks.items():
+            scores = [score for values in parts.values() for score in values]
+
+            fields[tag] = {
+                "score": sum(scores) / len(scores),
+                **{part: sum(values) / len(values) for part, values in parts.items()}
+            }
+
+        return fields

@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from .base import BaseMethod
+from ..constants import FIELD_GROUPS
 
 class SetComparisonMethod(BaseMethod):
 
@@ -17,18 +18,30 @@ class SetComparisonMethod(BaseMethod):
 
         scores = []
         info = {}
+        references = {}
 
-        references = [(doc.gold, "gold"), (doc.platinum, "platinum")]
+        sources = [(doc.gold, "gold"), (doc.platinum, "platinum")]
 
-        for reference, name in references:
+        for reference, name in sources:
             if reference is None:
                 continue
+
             result = self.compare_records(doc.eval, reference, fields)
+
             if result["score"] is not None:
                 scores.append(result["score"])
+                references[name] = {
+                    "score": result["score"],
+                    **self.build_field_scores(result["comparisons"])
+                }
+
             info[name] = result
 
-        return {"score": sum(scores) / len(scores) if scores else None, "info": info}
+        return {
+            "score": sum(scores) / len(scores) if scores else None,
+            "references": references,
+            "info": info
+        }
 
     def compare_records(self, record, reference, fields) -> dict:
 
@@ -135,3 +148,38 @@ class SetComparisonMethod(BaseMethod):
     @staticmethod
     def get_values(values, tags) -> list[str]:
         return [value for tag in tags for value in values[tag]]
+
+    @staticmethod
+    def build_field_scores(comparisons: list[dict]) -> dict:
+
+        checks = {}
+
+        for comparison in comparisons:
+            tag = "/".join(comparison["fields"])
+            subfield = "/".join(comparison["sub_fields"])
+            score = comparison["score"]
+
+            field = checks.setdefault(tag, {"score": []})
+            field["score"].append(score)
+            field.setdefault(subfield, []).append(score)
+
+        for group in FIELD_GROUPS:
+            tags = sorted(group)
+            group_name = "/".join(tags)
+
+            if group_name in checks:
+                continue
+
+            group_checks = {}
+
+            for tag in tags:
+                for key, scores in checks.get(tag, {}).items():
+                    group_checks.setdefault(key, []).extend(scores)
+
+            if group_checks:
+                checks[group_name] = group_checks
+
+        return {
+            tag: {key: sum(scores) / len(scores) for key, scores in values.items()}
+            for tag, values in checks.items()
+        }
