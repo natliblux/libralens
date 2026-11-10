@@ -115,10 +115,12 @@ class Record:
         self.years_confident = [y for y in self.years if not y.endswith("]") and not y.endswith("?")]
         self.people_name_variants = {tag: [self.get_people_name_variants(name) for name in names] for tag, names in self.people_names.items()}
 
-    def get_isbn_variants(self, isbn: str | None) -> list[str]:
+    @staticmethod
+    def get_isbn_variants(isbn: str | None) -> list[str]:
 
         if isbn is None:
             return []
+
         compact = isbn.replace("-", "").replace(" ", "")
         return list(dict.fromkeys([isbn, compact, isbn.replace("-", " ")]))
 

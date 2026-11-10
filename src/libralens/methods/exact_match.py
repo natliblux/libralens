@@ -1,4 +1,5 @@
 from .value_comparison import ValueComparisonMethod
+from ..record import Record
 
 class ExactMatchMethod(ValueComparisonMethod):
 
@@ -21,3 +22,27 @@ class ExactMatchMethod(ValueComparisonMethod):
 
     def compare_strings(self, eval_text: str, reference_text: str) -> float:
         return float(eval_text == reference_text)
+
+    def compare_subfield(self, eval_field, reference_field, code, comparisons) -> None:
+
+        if eval_field["tag"] != "020" or code != "a":
+            return super().compare_subfield(eval_field, reference_field, code, comparisons)
+
+        eval_text = self.get_subfield(eval_field, code)
+        reference_text = self.get_subfield(reference_field, code)
+
+        if eval_text is None or reference_text is None:
+            return
+
+        eval_variants = set(Record.get_isbn_variants(eval_text))
+        reference_variants = set(Record.get_isbn_variants(reference_text))
+        score = float(bool(eval_variants & reference_variants))
+
+        comparisons.append({
+            "eval_field": eval_field["tag"],
+            "reference_field": reference_field["tag"],
+            "sub_fields": [code],
+            "eval_text": eval_text,
+            "reference_text": reference_text,
+            "score": score
+        })
