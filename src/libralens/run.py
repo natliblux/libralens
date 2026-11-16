@@ -4,9 +4,13 @@ from dataclasses import dataclass
 
 @dataclass
 class Run:
-    id: str
     method: str
+    id: str | None = None
     fields: list[str] | None = None
+
+    def __post_init__(self):
+        if self.id is None:
+            self.id = self.method
 
 def load_runs(path: str | Path) -> list[Run]:
 
@@ -33,14 +37,15 @@ def load_runs(path: str | Path) -> list[Run]:
 
         if not isinstance(run, dict):
             raise ValueError("each run must be an object")
-        if "id" not in run:
-            raise ValueError("each run must contain 'id'")
         if "method" not in run:
             raise ValueError("each run must contain 'method'")
 
-        run_id = run["id"]
+        method = run["method"]
+        run_id = run.get("id", method)
         fields = run.get("fields")
 
+        if not isinstance(method, str) or not method.strip():
+            raise ValueError("run 'method' must be a nonempty string")
         if not isinstance(run_id, str) or not run_id.strip():
             raise ValueError("run 'id' must be a nonempty string")
         if run_id in ids:
@@ -49,6 +54,6 @@ def load_runs(path: str | Path) -> list[Run]:
             raise ValueError("'fields' must be a list")
 
         ids.add(run_id)
-        runs.append(Run(id=run_id, method=run["method"], fields=fields))
+        runs.append(Run(id=run_id, method=method, fields=fields))
 
     return runs
