@@ -5,7 +5,7 @@ from ..funcs import join_subfields
 
 class ValueComparisonMethod(BaseMethod):
 
-    requires_gold_or_platinum = True
+    requires_reference = True
     combine_subfields = True
 
     def run_doc(self, doc, fields, llm=None):

@@ -7,7 +7,7 @@ class BaseMethod(ABC):
 
     requires_gold = False
     requires_platinum = False
-    requires_gold_or_platinum = False
+    requires_reference = False
     requires_text = False
     requires_llm = False
     requires_pdf = False

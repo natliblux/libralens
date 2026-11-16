@@ -12,7 +12,7 @@ class SetComparisonMethod(BaseMethod):
         "710": ("0", "4")
     }
 
-    requires_gold_or_platinum = True
+    requires_reference = True
 
     def run_doc(self, doc, fields, llm=None):
 

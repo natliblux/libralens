@@ -20,7 +20,7 @@ class SubfieldCardinalityMethod(BaseMethod):
         "710": ("a", "b", "d", "0", "e", "4"),
     }
 
-    requires_gold_or_platinum = True
+    requires_reference = True
 
     def run_doc(self, doc, fields, llm=None):
 
