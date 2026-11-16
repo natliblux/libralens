@@ -91,6 +91,8 @@ class LibraLens:
         self.document_scores, self.run_scores, self.score = compute_scores(self.results, self.runs)
 
         if self.output:
+            if self.verbose:
+                print("\npreparing output folder...", flush=True)
             self._write_output()
             if "human-rating" in self.methods:
                 RatingSession(self.output).create(self.runs, len(self.documents))
