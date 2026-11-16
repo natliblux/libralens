@@ -279,7 +279,7 @@ class LibraLens:
             missing.append("gold records")
         if method.requires_platinum and self.platinum is None:
             missing.append("platinum records")
-        if method.requires_gold_or_platinum and self.gold is None and self.platinum is None:
+        if method.requires_reference and self.gold is None and self.platinum is None:
             missing.append("gold or platinum records")
         if method.requires_text and self.text is None:
             missing.append("plain text")
