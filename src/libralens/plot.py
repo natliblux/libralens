@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from .constants import PLOT_RESOLUTION
 
-def create_results_plot(results: list[dict], runs: list[str], overall_score: float | None, output_path: str | Path) -> None:
+def create_results_plot(results: list[dict], runs: list[str], output_path: str | Path) -> None:
 
     output_path = Path(output_path)
 
@@ -11,16 +11,11 @@ def create_results_plot(results: list[dict], runs: list[str], overall_score: flo
         return
 
     if len(results) <= PLOT_RESOLUTION:
-        _create_document_heatmap(results=results, runs=runs, overall_score=overall_score, output_path=output_path)
+        _create_document_heatmap(results=results, runs=runs, output_path=output_path)
     else:
-        _create_distribution_heatmap(results=results, runs=runs, overall_score=overall_score, output_path=output_path)
+        _create_distribution_heatmap(results=results, runs=runs, output_path=output_path)
 
-def _add_title(fig, overall_score: float | None) -> None:
-
-    if overall_score is not None:
-        fig.suptitle(f"dataset score: {overall_score:.3f}", fontsize=10)
-
-def _create_document_heatmap(results: list[dict], runs: list[str], overall_score: float | None, output_path: Path) -> None:
+def _create_document_heatmap(results: list[dict], runs: list[str], output_path: Path) -> None:
 
     values = np.full((len(results), len(runs)), np.nan, dtype=float)
 
@@ -37,7 +32,6 @@ def _create_document_heatmap(results: list[dict], runs: list[str], overall_score
     cmap = plt.get_cmap("RdYlGn").copy()
     cmap.set_bad("lightgrey")
     image = ax.imshow(values, cmap=cmap, vmin=0, vmax=1, aspect="auto")
-    _add_title(fig=fig, overall_score=overall_score)
     ax.set_xticks(range(len(runs)))
     ax.set_xticklabels(runs, rotation=30, ha="right")
     ax.set_yticks(range(len(results)))
@@ -58,7 +52,7 @@ def _create_document_heatmap(results: list[dict], runs: list[str], overall_score
     fig.savefig(output_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
-def _create_distribution_heatmap(results: list[dict], runs: list[str], overall_score: float | None, output_path: Path) -> None:
+def _create_distribution_heatmap(results: list[dict], runs: list[str], output_path: Path) -> None:
 
     bin_edges = np.linspace(0, 1, PLOT_RESOLUTION + 1)
     values = np.zeros((PLOT_RESOLUTION, len(runs)), dtype=float)
@@ -83,7 +77,6 @@ def _create_distribution_heatmap(results: list[dict], runs: list[str], overall_s
     valid_values = values[~np.isnan(values)]
     max_percentage = valid_values.max() if valid_values.size else 1
     image = ax.imshow(values, cmap=cmap, vmin=0, vmax=max_percentage, aspect="auto")
-    _add_title(fig=fig, overall_score=overall_score)
     ax.set_xticks(range(len(runs)))
     ax.set_xticklabels(runs, rotation=30, ha="right")
     labels = [f"{bin_edges[i]:.2f}+" for i in reversed(range(PLOT_RESOLUTION))]

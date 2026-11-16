@@ -30,12 +30,7 @@ def compute_scores(results: list, runs: list[Run]) -> tuple:
         if scores:
             run_scores[run.id] = sum(scores) / len(scores)
 
-    # overall score
-    scores = [score for score in document_scores.values() if score is not None]
-
-    overall_score = sum(scores) / len(scores) if scores else None
-
-    return document_scores, run_scores, overall_score
+    return document_scores, run_scores
 
 def extract_pdf_images(pdf_path: Path, output_dir: Path) -> None:
 

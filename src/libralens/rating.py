@@ -276,7 +276,7 @@ class RatingSession:
             "info": info
         }
 
-        _, run_scores, overall_score = compute_scores(results, runs)
+        _, run_scores = compute_scores(results, runs)
 
         path.write_text(json.dumps(results, indent=4, ensure_ascii=False), encoding="utf-8")
 
@@ -284,8 +284,7 @@ class RatingSession:
             create_results_plot(
                 results=results,
                 runs=[run.id for run in runs if run.id in run_scores],
-                overall_score=overall_score,
-                output_path=self.output / "results.png"
+                output_path=self.output / "heatmap.png"
             )
 
     def _align_eval_fields(self, document: Document) -> list[dict]:
