@@ -1,4 +1,6 @@
 from pathlib import Path
+import importlib
+from .scores import Scores
 from .ui import launch
 from .run import Run
 import shutil
@@ -50,7 +52,7 @@ class LibraLens:
                 methods = [name for name, cls in METHODS.items() if not self._missing_requirements(cls())]
             else:
                 methods = list(dict.fromkeys(methods))
-            self.runs = [Run(id=method, method=method, fields=fields) for method in methods]
+            self.runs = [Run(method=method, fields=fields) for method in methods]
 
         self._validate_runs()
         for run in self.runs:
@@ -221,7 +223,8 @@ class LibraLens:
             raise ValueError("run ids must be nonempty strings")
 
         if len(ids) != len(set(ids)):
-            raise ValueError("run ids must be unique")
+            duplicates = sorted({id for id in ids if ids.count(id) > 1})
+            raise ValueError(f"duplicate run ids: {', '.join(duplicates)}")
 
         if sum(run.method == "human-rating" for run in self.runs) > 1:
             raise ValueError("human-rating can only be configured once")
@@ -293,3 +296,29 @@ class LibraLens:
     def rate(output: str | Path) -> None:
         print(f"human-rating: open http://localhost:{HUMAN_RATING_PORT} in your browser")
         launch(output)
+
+    @staticmethod
+    def aggregate(output: str | Path, module: str) -> None:
+
+        results_path = Path(output) / "results.json"
+
+        if not results_path.is_file():
+            raise ValueError(f"results file not found: {results_path}")
+
+        try:
+            aggregation = importlib.import_module(f".aggregate.{module}", package="libralens")
+        except ModuleNotFoundError as e:
+            if e.name == f"libralens.aggregate.{module}":
+                raise ValueError(f"aggregation module not found: {module}") from e
+            raise
+
+        if not callable(getattr(aggregation, "aggregate", None)):
+            raise ValueError(f"aggregation module '{module}' must define an aggregate(scores) function")
+
+        with open(results_path, encoding="utf-8") as f:
+            results = json.load(f)
+
+        for index, document in enumerate(results):
+            scores = Scores(document["runs"])
+            score = aggregation.aggregate(scores)
+            print(f"document {index}: {score}")

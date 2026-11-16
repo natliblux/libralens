@@ -49,10 +49,14 @@ def main():
     rating_parser = subparsers.add_parser("rate", help="open an existing rating session")
     rating_parser.add_argument("output", help="directory containing a rating session")
 
+    aggregation_parser = subparsers.add_parser("aggregate", help="aggregate existing evaluation scores")
+    aggregation_parser.add_argument("output", help="directory containing evaluation results")
+    aggregation_parser.add_argument("module", help="aggregation module name")
+
     # Show evaluation arguments in top-level help
     parser.format_help = eval_parser.format_help
 
-    if len(sys.argv) > 1 and sys.argv[1] not in ("eval", "rate", "-h", "--help"):
+    if len(sys.argv) > 1 and sys.argv[1] not in ("eval", "rate", "aggregate", "-h", "--help"):
         args = parser.parse_args(["eval"] + sys.argv[1:])
     else:
         args = parser.parse_args()
@@ -64,6 +68,8 @@ def main():
     try:
         if args.command == "rate":
             LibraLens.rate(args.output)
+        elif args.command == "aggregate":
+            LibraLens.aggregate(args.output, args.module)
         else:
             evaluate(args)
 
