@@ -1,11 +1,13 @@
 from ..constants import FIELD_GROUPS
 from .base import BaseMethod
+from .subfield_cardinality import SubfieldCardinalityMethod
 
 class SubfieldPresenceMethod(BaseMethod):
 
     name = "subfield-presence"
     requires_reference = True
-
+    supported_fields = SubfieldCardinalityMethod.supported_fields
+    
     def run_doc(self, doc, fields, llm=None):
 
         scores = []
