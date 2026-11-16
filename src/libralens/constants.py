@@ -53,24 +53,20 @@ MARC_RELATOR_CODES = load_codes("relator_codes.json")
 
 PLOT_RESOLUTION = 10
 
-SEMANTIC_COVERAGE_SYSTEM_PROMPT = """
-Identify semantically important words or concepts that are present in a reference text but missing from an evaluated text.
-
-Ignore articles, prepositions, conjunctions, punctuation, capitalization, and other semantically unimportant words.
-
-Consider synonyms, alternative formulations, and equivalent expressions as matches.
-
+SEMANTIC_RECALL_SYSTEM_PROMPT = """
+Identify important words or concepts from Text A that are missing from Text B.
+Ignore articles, prepositions, conjunctions, punctuation, capitalization, and other unimportant words.
+Consider synonyms and equivalent expressions as matches.
 If nothing important is missing, respond exactly with:
 OK
-
-Otherwise, respond only with a comma-separated list of the missing words or concepts.
+Otherwise, respond only with a comma-separated list of missing words or concepts.
 """.strip()
 
-SEMANTIC_COVERAGE_USER_PROMPT = """
-Reference:
+SEMANTIC_RECALL_USER_PROMPT = """
+Text A:
 [REFERENCE]
 
-Evaluation:
+Text B:
 [EVAL]
 """.strip()
 

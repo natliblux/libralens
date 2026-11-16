@@ -1,10 +1,10 @@
 from .value_comparison import ValueComparisonMethod
 from ..funcs import join_subfields
-from ..constants import SEMANTIC_COVERAGE_SYSTEM_PROMPT, SEMANTIC_COVERAGE_USER_PROMPT
+from ..constants import SEMANTIC_RECALL_SYSTEM_PROMPT, SEMANTIC_RECALL_USER_PROMPT
 
-class SemanticCoverageMethod(ValueComparisonMethod):
+class SemanticRecallMethod(ValueComparisonMethod):
 
-    name = "semantic-coverage"
+    name = "semantic-recall"
     requires_llm = True
     combine_subfields = True
 
@@ -22,8 +22,8 @@ class SemanticCoverageMethod(ValueComparisonMethod):
     @staticmethod
     def get_missing(eval_text: str, reference_text: str, llm) -> list[str]:
 
-        user_prompt = SEMANTIC_COVERAGE_USER_PROMPT.replace("[REFERENCE]", reference_text).replace("[EVAL]", eval_text)
-        response = llm.run(system_prompt=SEMANTIC_COVERAGE_SYSTEM_PROMPT, user_prompt=user_prompt).strip()
+        user_prompt = SEMANTIC_RECALL_USER_PROMPT.replace("[REFERENCE]", reference_text).replace("[EVAL]", eval_text)
+        response = llm.run(system_prompt=SEMANTIC_RECALL_SYSTEM_PROMPT, user_prompt=user_prompt).strip()
 
         if response.upper() == "OK":
             return []
