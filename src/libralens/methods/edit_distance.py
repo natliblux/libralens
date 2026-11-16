@@ -15,5 +15,5 @@ class EditDistanceMethod(ValueComparisonMethod):
         "710": ("a", "b")
     }
 
-    def compare_strings(self, eval_text: str, reference_text: str) -> float:
+    def compare_strings(self, eval_text: str, reference_text: str, llm=None) -> float:
         return ratio(eval_text, reference_text)

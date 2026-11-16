@@ -6,7 +6,7 @@ from ..funcs import join_subfields
 class ValueComparisonMethod(BaseMethod):
 
     requires_gold_or_platinum = True
-    combine_names = True
+    combine_subfields = True
 
     def run_doc(self, doc, fields, llm=None):
 
@@ -20,7 +20,7 @@ class ValueComparisonMethod(BaseMethod):
             if reference is None:
                 continue
 
-            result = self.compare_records(doc.eval, reference, mapping, fields)
+            result = self.compare_records(doc.eval, reference, mapping, fields, llm)
 
             if result["score"] is not None:
                 scores.append(result["score"])
@@ -37,7 +37,7 @@ class ValueComparisonMethod(BaseMethod):
             "info": info
         }
 
-    def compare_records(self, eval_record, reference_record, mapping, fields) -> dict:
+    def compare_records(self, eval_record, reference_record, mapping, fields, llm=None) -> dict:
 
         comparisons = []
 
@@ -47,14 +47,14 @@ class ValueComparisonMethod(BaseMethod):
                 continue
 
             if tag == "264":
-                self.compare_mapped_fields(eval_record, reference_record, mapping, {tag}, sub_fields, comparisons)
+                self.compare_mapped_fields(eval_record, reference_record, mapping, {tag}, sub_fields, comparisons, llm)
             else:
-                self.compare_standard_field(eval_record, reference_record, tag, sub_fields, comparisons)
+                self.compare_standard_field(eval_record, reference_record, tag, sub_fields, comparisons, llm)
 
         grouped_fields = GROUPED_FIELDS & set(fields)
 
         if grouped_fields:
-            self.compare_mapped_fields(eval_record, reference_record, mapping, grouped_fields, fields, comparisons)
+            self.compare_mapped_fields(eval_record, reference_record, mapping, grouped_fields, fields, comparisons, llm)
 
         scores = [comparison["score"] for comparison in comparisons]
 
@@ -63,7 +63,7 @@ class ValueComparisonMethod(BaseMethod):
             "comparisons": comparisons,
         }
 
-    def compare_standard_field(self, eval_record, reference_record, tag, sub_fields, comparisons) -> None:
+    def compare_standard_field(self, eval_record, reference_record, tag, sub_fields, comparisons, llm=None) -> None:
 
         eval_field = self.get_field(eval_record, tag)
         reference_field = self.get_field(reference_record, tag)
@@ -72,12 +72,12 @@ class ValueComparisonMethod(BaseMethod):
             return
 
         for code in sub_fields:
-            self.compare_subfield(eval_field, reference_field, code, comparisons)
+            self.compare_subfield(eval_field, reference_field, code, comparisons, llm)
 
-        if self.combine_names and tag == "245" and {"a", "b"} <= sub_fields:
-            self.compare_combined(eval_field, reference_field, comparisons)
+        if self.combine_subfields and tag == "245" and {"a", "b"} <= sub_fields:
+            self.compare_combined(eval_field, reference_field, comparisons, llm)
 
-    def compare_mapped_fields(self, eval_record, reference_record, mapping, tags, sub_fields, comparisons) -> None:
+    def compare_mapped_fields(self, eval_record, reference_record, mapping, tags, sub_fields, comparisons, llm=None) -> None:
 
         for eval_field in eval_record.fields:
 
@@ -99,18 +99,18 @@ class ValueComparisonMethod(BaseMethod):
             if tag in GROUPED_FIELDS:
                 selected = sub_fields[tag]
 
-                if self.combine_names:
+                if self.combine_subfields:
                     if selected & {"a", "b"}:
-                        self.compare_combined(eval_field, reference_field, comparisons)
+                        self.compare_combined(eval_field, reference_field, comparisons, llm)
                 else:
                     for code in selected:
-                        self.compare_subfield(eval_field, reference_field, code, comparisons)
+                        self.compare_subfield(eval_field, reference_field, code, comparisons, llm)
 
             else:
                 for code in sub_fields:
-                    self.compare_subfield(eval_field, reference_field, code, comparisons)
+                    self.compare_subfield(eval_field, reference_field, code, comparisons, llm)
 
-    def compare_subfield(self, eval_field, reference_field, code, comparisons) -> None:
+    def compare_subfield(self, eval_field, reference_field, code, comparisons, llm=None) -> None:
 
         eval_text = self.get_subfield(eval_field, code)
         reference_text = self.get_subfield(reference_field, code)
@@ -124,10 +124,10 @@ class ValueComparisonMethod(BaseMethod):
             "sub_fields": [code],
             "eval_text": eval_text,
             "reference_text": reference_text,
-            "score": self.compare_strings(eval_text, reference_text),
+            "score": self.compare_strings(eval_text, reference_text, llm)
         })
 
-    def compare_combined(self, eval_field, reference_field, comparisons) -> None:
+    def compare_combined(self, eval_field, reference_field, comparisons, llm=None) -> None:
 
         eval_text = join_subfields(eval_field, {"a", "b"})
         reference_text = join_subfields(reference_field, {"a", "b"})
@@ -141,11 +141,11 @@ class ValueComparisonMethod(BaseMethod):
             "sub_fields": ["a", "b"],
             "eval_text": eval_text,
             "reference_text": reference_text,
-            "score": self.compare_strings(eval_text, reference_text),
+            "score": self.compare_strings(eval_text, reference_text, llm)
         })
 
     @abstractmethod
-    def compare_strings(self, eval_text: str, reference_text: str) -> float:
+    def compare_strings(self, eval_text: str, reference_text: str, llm=None) -> float:
         pass
 
     @staticmethod

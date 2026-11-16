@@ -15,7 +15,7 @@ class CommonSubstringMethod(ValueComparisonMethod):
         "710": ("a", "b")
     }
 
-    def compare_strings(self, eval_text: str, reference_text: str) -> float:
+    def compare_strings(self, eval_text: str, reference_text: str, llm=None) -> float:
 
         if not eval_text and not reference_text:
             return 1.0

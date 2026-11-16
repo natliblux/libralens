@@ -4,7 +4,7 @@ from ..record import Record
 class ExactMatchMethod(ValueComparisonMethod):
 
     name = "exact-match"
-    combine_names = False
+    combine_subfields = False
 
     supported_fields = {
         "008": ("00-05", "35-37"),
@@ -20,13 +20,13 @@ class ExactMatchMethod(ValueComparisonMethod):
         "710": ("ind1", "ind2", "d", "0", "e", "4")
     }
 
-    def compare_strings(self, eval_text: str, reference_text: str) -> float:
+    def compare_strings(self, eval_text: str, reference_text: str, llm=None) -> float:
         return float(eval_text == reference_text)
 
-    def compare_subfield(self, eval_field, reference_field, code, comparisons) -> None:
+    def compare_subfield(self, eval_field, reference_field, code, comparisons, llm=None) -> None:
 
         if eval_field["tag"] != "020" or code != "a":
-            return super().compare_subfield(eval_field, reference_field, code, comparisons)
+            return super().compare_subfield(eval_field, reference_field, code, comparisons, llm)
 
         eval_text = self.get_subfield(eval_field, code)
         reference_text = self.get_subfield(reference_field, code)
