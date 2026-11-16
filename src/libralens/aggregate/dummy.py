@@ -1,4 +1,4 @@
-def aggregate(scores: dict):
+def aggregate(scores: dict) -> dict[str, float | None]:
 
     values = [score for score in scores.values() if score is not None]
-    return sum(values) / len(values) if values else None
+    return {"quality": sum(values) / len(values) if values else None}

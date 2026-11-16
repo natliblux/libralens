@@ -63,12 +63,11 @@ class LibraLens:
         self._validate_requirements()
         self.llm = LLM() if any(self.method_instances[run.id].requires_llm for run in self.runs) else None
         self.documents = load_documents(self.eval, self.gold, self.platinum, self.text, self.pdf)
-        self.score = None
         self.run_scores = {}
         self.document_scores = {}
         self.results = []
 
-    def evaluate(self, open_ui: bool = True) -> None:
+    def run(self, open_ui: bool = True) -> None:
 
         if self.verbose:
             self._print_info()
@@ -88,7 +87,7 @@ class LibraLens:
             for i, result in enumerate(method_results):
                 self.results[i]["runs"][run.id] = {"method": run.method, **result}
 
-        self.document_scores, self.run_scores, self.score = compute_scores(self.results, self.runs)
+        self.document_scores, self.run_scores = compute_scores(self.results, self.runs)
 
         if self.output:
             if self.verbose:
@@ -135,7 +134,7 @@ class LibraLens:
         print()
 
         for run in self.runs:
-            print(f"{run.id} ({run.method})")
+            print(f"run: {run.id} ({run.method})")
             print(f"  {self._format_fields(run.fields)}")
             print()
 
@@ -152,11 +151,7 @@ class LibraLens:
         for run_id, score in self.run_scores.items():
             score_str = f"{score:.3f}" if score is not None else f"{'n/a':>5}"
             print(f"  {score_str} {run_id}")
-
         print()
-        print("dataset score")
-        score_str = f"{self.score:.3f}" if self.score is not None else f"{'n/a':>5}"
-        print(f"  {score_str} overall")
 
     def _write_output(self) -> None:
 
@@ -174,7 +169,7 @@ class LibraLens:
 
         # plot
         completed_runs = [run.id for run in self.runs if run.id in self.run_scores]
-        create_results_plot(results=self.results, runs=completed_runs, overall_score=self.score, output_path=self.output / "results.png")
+        create_results_plot(results=self.results, runs=completed_runs, output_path=self.output / "heatmap.png")
 
         # document data
         width = len(str(len(self.documents) - 1))
@@ -300,12 +295,38 @@ class LibraLens:
         launch(output)
 
     @staticmethod
-    def aggregate(output: str | Path, module: str) -> None:
+    def aggregate(output: str | Path, module: str | None = None, keys: bool = False, verbose: bool = False) -> dict[str, float]:
 
-        results_path = Path(output) / "results.json"
+        output = Path(output)
+        results_path = output / "results.json"
 
         if not results_path.is_file():
             raise ValueError(f"results file not found: {results_path}")
+
+        with results_path.open(encoding="utf-8") as file:
+            results = json.load(file)
+
+        scores_by_document = [Scores(document["runs"]) for document in results]
+        score_catalog = {}
+        for document, scores in zip(results, scores_by_document):
+            for key, score in scores.items():
+                score_catalog.setdefault(key, {})[str(document["id"])] = score
+
+        for values in score_catalog.values():
+            values["average"] = sum(values.values()) / len(values)
+        score_catalog = dict(sorted(score_catalog.items()))
+        scores_path = output / "scores.json"
+        scores_path.write_text(json.dumps(score_catalog, indent=4), encoding="utf-8")
+
+        if keys:
+            print(f"available score keys ({len(results)} documents):")
+            width = max((len(key) for key in score_catalog), default=0)
+
+            for key, values in score_catalog.items():
+                print(f"  {key:<{width}}  {len(values) - 1}/{len(results)}")
+
+        if module is None:
+            return {}
 
         try:
             aggregation = importlib.import_module(f".aggregate.{module}", package="libralens")
@@ -317,10 +338,17 @@ class LibraLens:
         if not callable(getattr(aggregation, "aggregate", None)):
             raise ValueError(f"aggregation module '{module}' must define an aggregate(scores) function")
 
-        with open(results_path, encoding="utf-8") as f:
-            results = json.load(f)
-
-        for index, document in enumerate(results):
-            scores = Scores(document["runs"])
-            score = aggregation.aggregate(scores)
-            print(f"document {index}: {score}")
+        aggregated_scores = {}
+        for document, scores in zip(results, scores_by_document):
+            values = aggregation.aggregate(scores)
+            for key, score in values.items():
+                if score is not None:
+                    aggregated_scores.setdefault(key, []).append(score)
+            if verbose:
+                print(f"document {document['id']}: {values}")
+        averages = {key: sum(scores) / len(scores) for key, scores in aggregated_scores.items()}
+        if verbose:
+            print(f"\ndataset averages based on '{module}'")
+            for key, score in averages.items():
+                print(f"  {key}: {score:.4f}")
+        return averages
