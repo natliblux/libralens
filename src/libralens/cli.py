@@ -3,7 +3,7 @@ import sys
 from .libralens import LibraLens
 from .run import load_runs
 
-def add_eval_arguments(parser):
+def add_run_arguments(parser):
 
     parser.add_argument("--eval", required=True, help="file (.xml or .txt) or directory containing marc records to be evaluated")
 
@@ -18,7 +18,7 @@ def add_eval_arguments(parser):
     parser.add_argument("--pdf", help="pdf file or directory containing corresponding source pdf documents")
     parser.add_argument("--output", help="directory to write evaluation results and document data")
 
-def evaluate(args):
+def run(args):
 
     if args.runs and args.fields is not None:
         raise ValueError("fields cannot be provided together with runs")
@@ -36,28 +36,29 @@ def evaluate(args):
         verbose=True
     )
 
-    libralens.evaluate()
+    libralens.run()
 
 def main():
 
     parser = argparse.ArgumentParser(description="LibraLens CLI")
     subparsers = parser.add_subparsers(dest="command")
 
-    eval_parser = subparsers.add_parser("eval", help="evaluate MARC records", prog="libralens")
-    add_eval_arguments(eval_parser)
+    run_parser = subparsers.add_parser("run", help="run evaluation methods on MARC records", prog="libralens")
+    add_run_arguments(run_parser)
 
     rating_parser = subparsers.add_parser("rate", help="open an existing rating session")
     rating_parser.add_argument("output", help="directory containing a rating session")
 
     aggregation_parser = subparsers.add_parser("aggregate", help="aggregate existing evaluation scores")
     aggregation_parser.add_argument("output", help="directory containing evaluation results")
-    aggregation_parser.add_argument("module", help="aggregation module name")
+    aggregation_parser.add_argument("module", nargs="?", help="aggregation module name")
+    aggregation_parser.add_argument("--keys", action="store_true", help="print available score keys")
 
-    # Show evaluation arguments in top-level help
-    parser.format_help = eval_parser.format_help
+    # Show run arguments in top-level help
+    parser.format_help = run_parser.format_help
 
-    if len(sys.argv) > 1 and sys.argv[1] not in ("eval", "rate", "aggregate", "-h", "--help"):
-        args = parser.parse_args(["eval"] + sys.argv[1:])
+    if len(sys.argv) > 1 and sys.argv[1] not in ("run", "rate", "aggregate", "-h", "--help"):
+        args = parser.parse_args(["run"] + sys.argv[1:])
     else:
         args = parser.parse_args()
 
@@ -69,9 +70,11 @@ def main():
         if args.command == "rate":
             LibraLens.rate(args.output)
         elif args.command == "aggregate":
-            LibraLens.aggregate(args.output, args.module)
+            if args.module is None and not args.keys:
+                raise ValueError("provide an aggregation module or --keys")
+            LibraLens.aggregate(args.output, args.module, keys=args.keys, verbose=True)
         else:
-            evaluate(args)
+            run(args)
 
     except ValueError as e:
         parser.error(str(e))
