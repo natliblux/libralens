@@ -3,7 +3,7 @@ from .text_match import TextMatchMethod
 from .common_substring import CommonSubstringMethod
 from .edit_distance import EditDistanceMethod
 from .exact_match import ExactMatchMethod
-from .semantic_coverage import SemanticCoverageMethod
+from .semantic_recall import SemanticRecallMethod
 from .f1_score import F1ScoreMethod
 from .precision_score import PrecisionMethod
 from .recall_score import RecallMethod
@@ -18,7 +18,7 @@ METHOD_CLASSES = [
     CommonSubstringMethod,
     EditDistanceMethod,
     ExactMatchMethod,
-    SemanticCoverageMethod,
+    SemanticRecallMethod,
     F1ScoreMethod,
     PrecisionMethod,
     RecallMethod,
