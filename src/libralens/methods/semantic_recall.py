@@ -11,7 +11,7 @@ class SemanticRecallMethod(ValueComparisonMethod):
     supported_fields = {
         "110": ("a", "b"),
         "245": ("a", "b", "d"),
-        "264": ("b",),
+        "264": ("a", "b", "c"),
         "490": ("a",),
         "710": ("a", "b")
     }
