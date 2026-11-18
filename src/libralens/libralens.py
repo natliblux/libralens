@@ -11,7 +11,7 @@ from .methods import METHODS
 from .loader import load_documents
 from .plot import create_results_plot
 from .rating import RatingSession
-from .llm import LLM, is_configured
+from .llm import LLM
 
 class LibraLens:
 
@@ -284,7 +284,7 @@ class LibraLens:
             missing.append("pdf documents")
         if method.requires_output and self.output is None:
             missing.append("output directory")
-        if method.requires_llm and not is_configured():
+        if method.requires_llm and not LLM.is_configured():
             missing.append("llm configuration")
 
         return missing
