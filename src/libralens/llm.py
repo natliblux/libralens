@@ -13,9 +13,6 @@ class LLM:
         self.rpm = int(os.getenv(LLM_RPM_ENV, "0"))
         self.retries = int(os.getenv(LLM_RETRIES_ENV, "3"))
 
-        os.environ["http_proxy"] = ""
-        os.environ["https_proxy"] = ""
-
         missing = []
 
         if not self.url:
