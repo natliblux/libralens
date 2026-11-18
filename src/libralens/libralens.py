@@ -339,16 +339,19 @@ class LibraLens:
             raise ValueError(f"aggregation module '{module}' must define an aggregate(scores) function")
 
         aggregated_scores = {}
+
         for document, scores in zip(results, scores_by_document):
             values = aggregation.aggregate(scores)
             for key, score in values.items():
                 if score is not None:
-                    aggregated_scores.setdefault(key, []).append(score)
+                    aggregated_scores.setdefault(key, {})[str(document["id"])] = score
             if verbose:
                 print(f"document {document['id']}: {values}")
-        averages = {key: sum(scores) / len(scores) for key, scores in aggregated_scores.items()}
+        for values in aggregated_scores.values():
+            values["average"] = sum(values.values()) / len(values)
         if verbose:
             print(f"\ndataset averages based on '{module}'")
-            for key, score in averages.items():
-                print(f"  {key}: {score:.4f}")
-        return averages
+            for key, values in aggregated_scores.items():
+                print(f"  {key}: {values['average']:.4f}")
+
+        return aggregated_scores
