@@ -281,7 +281,7 @@ LibraLens.aggregate("output/", keys=True)
 
 #### Custom Function
 
-MARC record quality is not necessarily defined the same way by every institution. Some fields and subfields matter more than others, and different evaluation methods may be better suited to different types of information. Custom aggregation functions let you reflect these priorities when combining scores into quality metrics.
+MARC record quality is not necessarily defined the same way by every institution. Some fields and subfields matter more than others, and different evaluation methods may be better suited for different types of information. Custom aggregation functions let you reflect these priorities when combining scores into quality metrics.
 
 Create a Python module under `libralens/aggregate/` with an `aggregate` function. It receives the flattened scores for **one document** and returns a dictionary of named metrics; unavailable scores are represented by `None`:
 
@@ -297,10 +297,25 @@ libralens aggregate output/ dummy
 ```
 
 ```python
-averages = LibraLens.aggregate("output/", "dummy", verbose=True)
+scores = LibraLens.aggregate("output/", "dummy", verbose=True)
 ```
 
 LibraLens applies the function to each document, then averages each named metric across documents with available values to produce dataset-level metrics.
+
+#### Human-Rating Comparison
+
+Human ratings can serve as a benchmark for evaluating custom aggregation functions. Different metrics can be used to measure the difference between aggregated scores and human ratings, such as the Mean Absolute Error (MAE). LibraLens' Python integration provides the flexibility to develop custom comparison scripts. For example, after running an aggregation, human ratings can be accessed from `scores.json`:
+
+```python
+human_rating = json.load(open("output/scores.json"))["human-rating"]
+```
+
+Next, the loss can be computed for document ids that are in both sets of scores:
+
+```python
+ids = (scores.keys() & human_rating.keys()) - {"average"}
+mae = sum(abs(scores[i] - human_rating[i]) for i in ids) / len(ids)
+```
 
 ## Evaluation Methods
 
