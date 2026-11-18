@@ -759,15 +759,21 @@ Some evaluation methods require access to an LLM. LibraLens supports endpoints e
 | `LIBRALENS_LLM_URL` | yes | Base URL |
 | `LIBRALENS_LLM_MODEL` | yes | Model Identifier |
 | `LIBRALENS_LLM_KEY` | no | API Key |
+| `LIBRALENS_LLM_RPM` | no | Maximum requests per minute (default: 0, unlimited) |
+| `LIBRALENS_LLM_RETRIES` | no | Maximum retry attempts for failed requests (default: 3) |
 
 For example:
 ```bash
 export LIBRALENS_LLM_URL="https://api.openai.com/v1"
 export LIBRALENS_LLM_MODEL="gpt-6"
-export LIBRALENS_LLM_KEY="..."
+export LIBRALENS_LLM_KEY="example-key"
+export LIBRALENS_LLM_RPM=300
+export LIBRALENS_LLM_RETRIES=3
 ```
 
-The API key can be omitted, depending on the used model (e.g. locally hosted).
+The API key can be omitted depending on the endpoint (e.g. locally hosted models).
+
+Rate limiting spaces requests over time to avoid exceeding provider limits. When disabled, requests are sent without an additional delay. Failed requests caused by rate limits or temporary server errors are automatically retried with exponential backoff. Both settings can be adjusted to accommodate different LLM providers and their usage limits.
 
 ### MARC Scope
 
